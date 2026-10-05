@@ -1,0 +1,21 @@
+{
+  "name": "AgroPiña Pro · Gestión inteligente de piña",
+  "short_name": "AgroPiña Pro",
+  "description": "Gestión agronómica, clima, inventario y finanzas para fincas de piña. Funciona sin conexión.",
+  "lang": "es",
+  "start_url": "./index.html#/dashboard",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0b0f0d",
+  "theme_color": "#05603a",
+  "categories": ["productivity", "business", "utilities"],
+  "icons": [
+    { "src": "assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Registrar labor", "url": "./index.html#/labores" },
+    { "name": "Clima y riesgo", "url": "./index.html#/clima" }
+  ]
+}
