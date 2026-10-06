@@ -55,7 +55,7 @@
         add('Monitoreo', st.monitoreos.map((m) => ({ Fecha: m.fecha, Parcela: P(m.parcelaId), Problema: C.plaga(m.plaga).nombre, Científico: C.plaga(m.plaga).cientifico, Severidad: m.severidad, 'Incidencia %': m.incidencia, Muestras: m.muestras, Acción: m.accion, Notas: m.notas })));
         add('Inventario', st.insumos.map((i) => ({ Producto: i.nombre, Categoría: i.categoria, 'Ingrediente activo': i.ingredienteActivo, Unidad: i.unidad, Stock: i.stock, 'Stock mínimo': i.stockMinimo, ['Costo unitario (' + mon + ')']: i.costoUnitario, ['Valor (' + mon + ')']: U.round(Math.max(0, i.stock) * i.costoUnitario, 2), 'Carencia (días)': i.carencia, Proveedor: i.proveedor })));
         add('Movimientos', st.movimientos.map((m) => ({ Fecha: m.fecha, Insumo: S.insumo(m.insumoId) ? S.insumo(m.insumoId).nombre : '', Tipo: m.tipo, Cantidad: m.cantidad, 'Costo unitario': m.costoUnitario, Nota: m.nota })));
-        XLSX.writeFile(wb, 'AgroPina_Reporte_' + st.settings.finca.replace(/[^\p{L}\p{N}]+/gu, '_') + '_' + st.hoy + '.xlsx');
+        XLSX.writeFile(wb, 'AgroPina_Reporte_' + (st.settings.finca.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'Finca') + '_' + st.hoy + '.xlsx');
         S.toast('Reporte Excel generado (8 hojas)');
       } catch (e) { S.toast('No se pudo generar el Excel: ' + e.message, 'error'); }
     },

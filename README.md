@@ -39,8 +39,9 @@ js/views/*.js           Pantallas
 js/app.js               Enrutador, diseño y arranque
 vendor/                 Vue 3, Chart.js, Leaflet, SheetJS, Font Awesome, fuente (generado: npm run vendor)
 sw.js, manifest.webmanifest  PWA
+scripts/                vendor.mjs (copia librerías), build-preview.py (copia para Artifact de claude.ai)
 src/tailwind.css, tailwind.config.js  Sistema de diseño
-tests/                  Pruebas del motor agronómico
+tests/                  Pruebas del motor agronómico (+ tests/e2e: pruebas de navegador)
 ```
 
 No hace falta compilar para usarla: basta con publicar la carpeta (por ejemplo, en GitHub Pages) o servirla con `npm run serve`. Si se abre `index.html` directamente desde el disco funciona todo, salvo el modo sin conexión (service worker).
@@ -54,5 +55,15 @@ npm run watch:css  # recompila los estilos mientras se edita
 npm test           # pruebas del motor agronómico
 npm run serve      # http://localhost:8080
 ```
+
+## Documentación del proyecto
+
+| Archivo | Para qué sirve |
+|---|---|
+| [`PUNTO_DE_REANUDACION.md`](PUNTO_DE_REANUDACION.md) | Dónde quedó el trabajo y qué hacer a continuación |
+| [`CONTINUIDAD.md`](CONTINUIDAD.md) | Contexto completo: decisiones, modelo de datos, reglas de negocio, entorno, backlog |
+| [`CHANGELOG.md`](CHANGELOG.md) | Historial detallado de cambios |
+| [`AGENTS.md`](AGENTS.md) | Reglas y comandos para agentes y colaboradores (`CLAUDE.md` apunta a él) |
+| [`tests/e2e/LEEME.md`](tests/e2e/LEEME.md) | Pruebas de navegador con Playwright |
 
 Datos externos: clima y geocodificación de [Open-Meteo](https://open-meteo.com), e imágenes satelitales de Esri World Imagery.

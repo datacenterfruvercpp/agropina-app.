@@ -4,7 +4,7 @@
   const { createApp, reactive, computed } = Vue;
   const S = AP.store, U = AP.utils, C = AP.catalog;
 
-  AP.VERSION = '2.0.0';
+  AP.VERSION = '2.0.1';
   AP.money = (n, compact) => U.fmtMoney(n, S.state.settings.moneda, compact);
 
   /* ------------------------------ Enrutador (hash) ------------------------------ */

@@ -1,9 +1,9 @@
 /* AgroPiña Pro · Service Worker: funcionamiento sin conexión (PWA) */
-const VERSION = 'agropina-v2.0.0';
+const VERSION = 'agropina-v2.0.1';
 const SHELL = [
   './', './index.html', './manifest.webmanifest', './assets/icon.svg',
   './css/tailwind.css', './css/app.css',
-  './vendor/vue.global.prod.js', './vendor/chart.umd.min.js', './vendor/leaflet/leaflet.js', './vendor/leaflet/leaflet.css',
+  './vendor/vue.global.prod.js', './vendor/chart.umd.min.js', './vendor/xlsx.full.min.js', './vendor/leaflet/leaflet.js', './vendor/leaflet/leaflet.css',
   './vendor/fontawesome/css/all.min.css', './vendor/fontawesome/webfonts/fa-solid-900.woff2', './vendor/fontawesome/webfonts/fa-regular-400.woff2',
   './vendor/fonts/fonts.css', './vendor/fonts/plus-jakarta-sans-latin.woff2',
   './js/utils.js', './js/catalog.js', './js/agronomy.js', './js/weather.js', './js/store.js', './js/demo.js', './js/ui.js', './js/forms.js',

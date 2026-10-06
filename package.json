@@ -1,6 +1,6 @@
 {
   "name": "agropina-pro",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "private": true,
   "description": "AgroPiña Pro — plataforma de gestión inteligente para fincas de piña",
   "scripts": {
