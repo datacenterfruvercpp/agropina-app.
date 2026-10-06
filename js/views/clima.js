@@ -73,13 +73,16 @@
       </ap-page-header>
 
       <div v-if="!w" class="card">
-        <ap-empty v-if="st.weather.status === 'error'" icon="fa-cloud" title="Pronóstico no disponible" :text="st.weather.error + '. Verifique su conexión a internet.'">
+        <ap-empty v-if="st.weather.status === 'error'" icon="fa-cloud" title="Pronóstico no disponible" :text="st.weather.error">
           <button class="btn btn-primary" @click="S.loadWeather(true)"><i class="fa-solid fa-rotate"></i>Reintentar</button>
         </ap-empty>
         <div v-else class="p-6 space-y-4"><div class="skeleton h-32"></div><div class="skeleton h-24"></div><div class="skeleton h-48"></div></div>
       </div>
 
       <div v-else class="space-y-4">
+        <div v-if="st.weather.simulated" class="flex items-center gap-3 rounded-xl p-3 bg-sky-50 text-sky-800 dark:bg-sky-500/10 dark:text-sky-300 text-sm">
+          <i class="fa-solid fa-flask"></i>Pronóstico simulado para la demostración. En la app instalada se usan datos reales de Open-Meteo.
+        </div>
         <div v-if="st.weather.stale" class="flex items-center gap-3 rounded-xl p-3 bg-amber-50 text-amber-800 dark:bg-amber-500/10 dark:text-amber-300 text-sm">
           <i class="fa-solid fa-triangle-exclamation"></i>Sin conexión. Se muestra el último pronóstico guardado ({{ U.fmtAgo(st.weather.fetchedAt) }}).
         </div>

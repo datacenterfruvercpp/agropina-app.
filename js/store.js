@@ -92,7 +92,7 @@
     parcelas: [], labores: [], insumos: [], cosechas: [], monitoreos: [], movimientos: [],
     hoy: U.today(),
     isDark: false,
-    weather: { status: 'idle', data: null, error: null, fetchedAt: null, stale: false },
+    weather: { status: 'idle', data: null, error: null, fetchedAt: null, stale: false, simulated: false },
     ui: { toasts: [], confirm: null, form: null, sheet: null }
   });
 
@@ -432,13 +432,14 @@
       state.weather.data = W.parse(r.raw);
       state.weather.fetchedAt = r.fetchedAt;
       state.weather.stale = !!r.stale;
+      state.weather.simulated = !!r.simulated;
       state.weather.error = r.error || null;
       state.weather.status = 'ready';
       if (force) toast(r.stale ? 'Sin conexión: mostrando el último pronóstico guardado' : 'Pronóstico actualizado', r.stale ? 'warning' : 'success');
     } catch (e) {
       state.weather.status = 'error';
       state.weather.error = e.message || 'No se pudo obtener el clima';
-      if (force) toast('No se pudo obtener el clima: ' + state.weather.error, 'error');
+      if (force) toast(state.weather.error, 'error');
     }
   }
   const ubicacionActual = computed(() => state.settings.ubicacion || C.UBICACION_DEFECTO);

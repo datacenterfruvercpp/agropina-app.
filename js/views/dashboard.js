@@ -90,7 +90,8 @@
           <div class="relative">
             <div class="flex items-center justify-between text-xs text-white/70">
               <span class="truncate"><i class="fa-solid fa-location-dot mr-1"></i>{{ S.ubicacionActual.value.nombre }}</span>
-              <span v-if="st.weather.fetchedAt" class="shrink-0"><i v-if="st.weather.stale" class="fa-solid fa-triangle-exclamation mr-1 text-amber-300"></i>{{ U.fmtAgo(st.weather.fetchedAt) }}</span>
+              <span v-if="st.weather.simulated" class="chip bg-white/15 text-white shrink-0"><i class="fa-solid fa-flask"></i>Simulado</span>
+              <span v-else-if="st.weather.fetchedAt" class="shrink-0"><i v-if="st.weather.stale" class="fa-solid fa-triangle-exclamation mr-1 text-amber-300"></i>{{ U.fmtAgo(st.weather.fetchedAt) }}</span>
             </div>
             <template v-if="w">
               <div class="flex items-center gap-4 mt-4">
@@ -177,6 +178,12 @@
                 <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-ink-200 dark:bg-white/10"></span>No apta</span>
               </div>
             </template>
+            <div v-else-if="st.weather.status === 'error'" class="flex-1 flex flex-col items-center justify-center text-center py-6 gap-3">
+              <span class="icon-tile bg-ink-100 text-ink-400 dark:bg-white/5"><i class="fa-solid fa-cloud"></i></span>
+              <p class="text-sm font-semibold">Sin pronóstico</p>
+              <p class="text-xs muted max-w-[220px]">Las ventanas de aplicación necesitan el pronóstico por hora.</p>
+              <button class="btn btn-soft btn-sm" @click="S.loadWeather(true)"><i class="fa-solid fa-rotate"></i>Reintentar</button>
+            </div>
             <div v-else class="space-y-3"><div class="skeleton h-20"></div><div class="skeleton h-8"></div></div>
           </div>
         </div>

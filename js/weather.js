@@ -37,7 +37,7 @@
       return { raw, fetchedAt: entry.fetchedAt, stale: false };
     } catch (e) {
       if (cache) return { raw: cache.raw, fetchedAt: cache.fetchedAt, stale: true, error: e.message };
-      throw e;
+      throw new Error('No se pudo conectar con el servicio de clima. Verifique su conexión a internet.');
     }
   };
 
