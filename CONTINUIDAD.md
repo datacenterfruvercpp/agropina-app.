@@ -2,7 +2,7 @@
 
 Documento vivo con todo el contexto necesario para retomar el proyecto sin haber estado en las sesiones anteriores. Se actualiza al final de cada sesión. Lo que sigue por hacer está en `PUNTO_DE_REANUDACION.md`; las reglas de trabajo, en `AGENTS.md`; el detalle de cambios, en `CHANGELOG.md`.
 
-**Última actualización:** 2026-10-06 · versión 2.0.1 · rama `claude/zen-goldberg-xdoq26`
+**Última actualización:** 2026-10-06 (el usuario pasó a trabajar en `facto-cr`; este proyecto queda en pausa) · versión 2.0.1 · rama `claude/zen-goldberg-xdoq26`
 
 ## 1. Objetivo
 
@@ -15,7 +15,7 @@ El usuario (cuenta `datacenter.fruver.cpp@gmail.com`, organización `datacenterf
 | Código | Completo y empujado a `claude/zen-goldberg-xdoq26` (`main` aún tiene la v1) |
 | Pruebas unitarias | 9/9 en verde (`npm test`) |
 | Pruebas de navegador | Verificadas con Chromium simulado: 12 vistas, 6 formularios, escritorio/móvil/oscuro, sin errores JS |
-| Pull request | **No creado** (el usuario no lo ha pedido) |
+| Pull request | Creado el 2026-10-06: https://github.com/datacenterfruvercpp/agropina-app./pull/1 (`claude/zen-goldberg-xdoq26` → `main`), sin fusionar |
 | Publicación propia (GitHub Pages) | **Pendiente**; el usuario aún no la activó |
 | Vista previa en claude.ai | Publicada (privada): https://claude.ai/artifact/TA9Xs68tdJ9z1SVfVEHE8n |
 | Clima real, mapa satelital, GPS, instalación PWA, modo sin conexión | **No verificados** en un dispositivo real (el entorno cloud bloquea esos servicios) |

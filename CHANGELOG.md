@@ -19,7 +19,7 @@ Formato: más reciente primero. Fechas en formato AAAA-MM-DD.
 ### Cambiado
 - Versión 2.0.1 en `package.json`, `js/app.js` y caché del service worker (`agropina-v2.0.1`).
 
-Commit: `7cfc86c` (correcciones de clima) y el commit de documentación que le sigue.
+Commits: `7cfc86c` (correcciones de clima) y `a4d6d4c` (documentación). Pull request #1 abierto contra `main`.
 
 ## 2.0.0 · 2026-10-05 · Rediseño total
 

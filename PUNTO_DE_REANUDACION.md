@@ -6,7 +6,8 @@ Dónde quedó el trabajo y qué hacer a continuación. Léelo primero al retomar
 
 ## Dónde quedó todo
 
-- La v2.0 (rediseño total) está terminada, probada y en la rama de trabajo. `main` sigue con la v1.
+- La v2.0 (rediseño total) está terminada, probada y en la rama de trabajo; tiene el pull request #1 abierto contra `main`, que sigue con la v1.
+- **El proyecto queda en pausa:** el usuario pasó a trabajar en el repositorio `datacenterfruvercpp/facto-cr` (sesión nueva). Retomar AgroPiña solo si el usuario lo pide.
 - Se corrigió lo que el usuario reportó al ver la vista previa (clima y «Ventana de aplicación» sin cargar).
 - Se escribió la documentación (`AGENTS.md`, `CLAUDE.md`, `CONTINUIDAD.md`, este archivo, `CHANGELOG.md`).
 - **No hay trabajo a medias ni cambios sin commitear.**
@@ -17,7 +18,7 @@ Dónde quedó el trabajo y qué hacer a continuación. Léelo primero al retomar
 1. **Esperar y atender el feedback del usuario** sobre la vista previa. Fue lo último que quedó abierto: pidió ver la app en la laptop y reportó dos fallos, ya resueltos. Preguntarle qué pantallas quiere ajustar.
 2. **Publicar la app real con GitHub Pages** (lo debe hacer el usuario: Settings → Pages → Deploy from a branch → `claude/zen-goldberg-xdoq26` → `/ (root)`; en repositorios privados requiere plan de pago; alternativa: Netlify Drop con la carpeta). Solo así funcionan el clima real, el mapa satelital, el GPS, la instalación como app y el modo sin conexión.
 3. **Verificar en un móvil real** lo que el entorno cloud no puede probar (lista abajo).
-4. **Decidir con el usuario si se crea un pull request** a `main` (no se ha creado ni se debe crear sin que lo pida) o si Pages se apunta a `main` tras fusionar.
+4. **Fusionar el pull request** https://github.com/datacenterfruvercpp/agropina-app./pull/1 (ya creado, sin fusionar) cuando el usuario lo apruebe, y apuntar Pages a `main`. Hasta entonces `main` sigue con la v1.
 5. **Validar los parámetros agronómicos** con el usuario (tabla en `CONTINUIDAD.md`, sección 6): días a inducción y a cosecha, densidad, peso de fruta, aprovechamiento (90 % planta / 80 % soca), precio de referencia (280 por tonelada), umbral de lluvia (20 mm). Son estimaciones del asistente.
 6. Elegir ítems del backlog (`CONTINUIDAD.md`, sección 9), empezando por lo que pida el usuario. Candidatos de mayor valor: sincronización en la nube, fotos en monitoreo, informe PDF para auditorías.
 
@@ -51,7 +52,7 @@ Para republicar la vista previa: `python3 scripts/build-preview.py <carpeta>` y 
 3. ¿Los parámetros agronómicos de la MD-2 (y otras variedades que use) coinciden con su finca?
 4. ¿Qué moneda y qué precio de referencia por tonelada usa? ¿Una caja equivale a 12 kg en su exportadora?
 5. ¿Cuántas personas usarán la app y en cuántos dispositivos? (define si hace falta sincronización en la nube).
-6. ¿Crear el pull request a `main` y dejar la v2 como oficial?
+6. ¿Fusionar el pull request #1 y dejar la v2 como oficial?
 
 ## Riesgos y recordatorios
 

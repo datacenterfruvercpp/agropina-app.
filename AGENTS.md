@@ -83,7 +83,7 @@ Vistas (`AP.views.<nombre>` ↔ ruta `#/<nombre>`): `dashboard`, `parcelas`, `pa
 ## Flujo de trabajo y git
 
 - Rama de trabajo asignada: **`claude/zen-goldberg-xdoq26`**. No empujes a otras ramas sin permiso.
-- **No crees pull requests** salvo que el usuario lo pida explícitamente.
+- **No crees pull requests** salvo que el usuario lo pida explícitamente. (El PR #1, de la rama de trabajo hacia `main`, ya existe: añade commits a esa rama en vez de abrir otro.)
 - Commits en español, asunto corto + cuerpo con el porqué. Termina cada commit con las líneas de atribución que indique la sesión (`Co-Authored-By: …` y `Claude-Session: …`).
 - `git push -u origin <rama>`; si falla por red, reintenta hasta 4 veces con espera de 2, 4, 8 y 16 s.
 - No commitees `node_modules/` (está en `.gitignore`). Sí se commitean `vendor/` y `css/tailwind.css` porque la app se publica tal cual, sin paso de compilación.
