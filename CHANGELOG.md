@@ -2,6 +2,12 @@
 
 Formato: más reciente primero. Fechas en formato AAAA-MM-DD.
 
+## Sin publicar · 2026-10-07 · Planificación comercial (solo documentación)
+
+- `PLAN_SAAS.md` (nuevo): plan para vender AgroPiña como servicio mensual a empresas de 3, 5 o 10 usuarios, con base de datos aislada por empresa (RLS), subdominios `{empresa}.agropina.datacenterpc.com`, formulario de alta, cobros con tarjeta (análisis de Pagadito y alternativas, diseño independiente de la pasarela), infraestructura en dos VPS (app y datos), respaldos cifrados de solo agregar, etapas, decisiones pendientes y riesgos. **No hay código todavía.**
+- `AGENTS.md`: nueva sección «Reglas para la transición a SaaS» y «Lecciones de conducta»; trampas del entorno (no se borran ramas, sitios bloqueados, estado de Vercel); flujo de git tras fusionar un PR.
+- `CONTINUIDAD.md`, `PUNTO_DE_REANUDACION.md`, `README.md` actualizados.
+
 ## 3.0.0 · 2026-10-07 · AgroPiña Enterprise (ERP)
 
 Pedido del usuario: «mejora totalmente el diseño y la funcionalidad, hazle upgrade full premium con diseños tipo SAP, Oracle y Dynamics». La app pasa de herramienta agronómica a **ERP agrícola multi-finca**. Unas 6 200 líneas de JavaScript (antes ~4 000).

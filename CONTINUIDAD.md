@@ -2,13 +2,15 @@
 
 Documento vivo con todo el contexto necesario para retomar el proyecto sin haber estado en las sesiones anteriores. Se actualiza al final de cada sesión. Lo que sigue por hacer está en `PUNTO_DE_REANUDACION.md`; las reglas de trabajo, en `AGENTS.md`; el detalle de cambios, en `CHANGELOG.md`.
 
-**Última actualización:** 2026-10-07 · versión **3.0.0 «Enterprise»** · rama `claude/zen-goldberg-xdoq26`
+**Última actualización:** 2026-10-07 (fin de sesión) · versión **3.0.0 «Enterprise»** en `main` · rama de trabajo `claude/zen-goldberg-xdoq26` · **siguiente gran hito: convertirla en SaaS multiempresa** (ver `PLAN_SAAS.md`)
 
 ## 1. Objetivo
 
 El usuario (cuenta `datacenter.fruver.cpp@gmail.com`, organización `datacenterfruvercpp`) tiene un repositorio `agropina-app` con una app de gestión para fincas de piña. Pidió un **rediseño total «premium»**, revisar la funcionalidad a fondo, compararla con los líderes del mercado (Agrivi, Cropwise, FieldView, Farmbrite) e implementar todas las mejoras. Eso quedó hecho en la versión 2.0.
 
 Después pidió **«mejorar totalmente el diseño y la funcionalidad, upgrade full premium con diseños tipo SAP, Oracle y Dynamics»** (aclaró que era para AgroPiña, no para facto-cr). Eso es la **versión 3.0 «Enterprise»**: un ERP agrícola multi-finca con órdenes de trabajo, personal y planilla, compras, inventario con kardex, ventas y cuentas por cobrar, presupuesto vs real, reportes, auditoría y paleta de comandos.
+
+Finalmente informó que **la app se va a comercializar como servicio de alquiler mensual**: cada empresa cliente (3, 5 o 10 usuarios) llena un formulario, recibe su espacio de datos **independiente y separado** de los demás y usa la app bajo un subdominio del dominio del usuario (`datacenterpc.com`), con cobro mensual con tarjeta. Todo ese análisis y plan está en **`PLAN_SAAS.md`** (aún sin código).
 
 ## 2. Estado actual
 
@@ -22,7 +24,9 @@ Después pidió **«mejorar totalmente el diseño y la funcionalidad, upgrade fu
 | Vista previa en claude.ai | Publicada (privada) con la v3: https://claude.ai/artifact/TA9Xs68tdJ9z1SVfVEHE8n |
 | Clima real, mapa satelital, GPS, instalación PWA, modo sin conexión | **No verificados** en un dispositivo real (el entorno cloud bloquea esos servicios) |
 
-El usuario todavía no ha revisado la v3. Su opinión es lo siguiente que hay que atender.
+El usuario todavía no ha dado su opinión sobre el diseño de la v3 (se centró en la comercialización). Lo siguiente es cerrar las decisiones pendientes de `PLAN_SAAS.md` (sección 11) y empezar la etapa 1.
+
+**Infraestructura del usuario (confirmada en conversación, no verificada desde el entorno):** dominio `datacenterpc.com` con DNS en **OrangeHost** (donde también tiene un VPS); un **VPS dedicado para apps** (Linux, SSH); un **VPS de datos de otro proveedor** (Linux, SSH, 2 TB libres) donde guarda respaldos importantes; **Vercel** conectado al repositorio. El agente **no puede conectarse** a esos servidores desde su entorno.
 
 ## 3. Historial de sesiones
 
@@ -41,6 +45,13 @@ El usuario todavía no ha revisado la v3. Su opinión es lo siguiente que hay qu
 1. *«Mejora totalmente el diseño y la funcionalidad… tipo SAP, Oracle, Dynamics»*. Al principio lo interpreté como un pedido para `facto-cr` y creé por error la rama `claude/zen-goldberg-xdoq26` en ese repositorio (idéntica a su `main`; el proxy no dejó borrarla en remoto; el usuario la borró desde GitHub el mismo día). El usuario aclaró: «la mejora es para agropiña».
 2. Se rehízo el sistema de diseño (IBM Plex, barra de sistema navy, menú agrupado, cabeceras tipo «object page», tablas empresariales, mosaicos, paleta de comandos) y se añadieron los módulos ERP (ver `CHANGELOG.md` 3.0.0).
 3. Verificación con Chromium: se corrigieron desbordes en móvil y a 1 024 px, cifras recortadas en mosaicos, el menú que tapaba «Configuración» a 900 px de alto, totales enteros con decimales, la migración que no se guardaba hasta el primer cambio y la vista previa que abría sin la demostración.
+4. Se escribió y probó `tests/negocio.test.js` (9 pruebas) y `tests/e2e/reglas-v3.js` (36 comprobaciones); se amplió `capturas.js`. Commit `9fec65b`, empujado; Artifact republicado (versión 3).
+5. *«Esa rama de facto-cr, bórrala tú, es tu error»*: desde el entorno **no se pueden borrar ramas remotas** (el proxy devuelve 403 y las herramientas MCP de GitHub no incluyen borrar ramas). Se guió al usuario, que la borró en GitHub; se verificó con `git ls-remote`. En facto-cr quedan `main` y `claude/rediseno-frontend-correcciones` (5 commits, **trabajo de otra sesión: no tocar**). La pantalla «Overview» de GitHub lista la misma rama en «Your branches» y «Active branches»: es una sola.
+6. *«Consolida o fusiona todo, o no sé qué se debe hacer»*: el PR #1 tenía el despliegue de **Vercel en rojo** desde la v2. Causa: `package.json` tenía un script `build` que Vercel ejecuta y luego busca la carpeta `public`. Se renombró a `build:todo` (commit `e5abb49`); Vercel pasó a verde. Se actualizó el título y la descripción del PR, se **fusionó con «merge»** (`1c2edae`) y Vercel publicó `main` en producción sin errores. Se actualizó la documentación (`2337319`).
+7. *«¿Cuántas personas usarán la app? 3, 5 o 10… es para comercializarla, alquiler mensual, formulario y base de datos independiente»*: se investigó cómo los SaaS separan datos de varias empresas, seguridad y cobros → `PLAN_SAAS.md`, secciones 3, 6 y 7.
+8. *«Para el pago con tarjeta analiza pagadito.com»*: el sitio está bloqueado por el proxy (EGRESS_BLOCKED); el análisis se hizo con fuentes públicas secundarias y **queda por confirmar con Pagadito** si ofrece cobro recurrente automático (las fuentes se contradicen). Preguntas listas en `PLAN_SAAS.md`, sección 7.
+9. *«Tengo un VPS dedicado, el dominio datacenterpc.com y miles de subdominios»* y *«tengo otro VPS de datos con 2 TB»* y *«proveedores diferentes, Linux, SSH, DNS en OrangeHost»*: se diseñó el esquema de subdominios `{empresa}.agropina.datacenterpc.com`, DNS comodín, HTTPS con Caddy bajo demanda, y la estrategia de respaldos cifrados «solo agregar» en el VPS de datos (secciones 4, 5 y 9 del plan).
+10. El usuario cambió el modelo de la sesión a Sonnet 5.5 (`/model`) y pidió documentar todo a fondo: este conjunto de documentos.
 
 ## 4. Decisiones de diseño y por qué
 
@@ -59,6 +70,8 @@ El usuario todavía no ha revisado la v3. Su opinión es lo siguiente que hay qu
 - **Lógica ERP pura en `js/negocio.js`** (planilla, períodos, cuentas por cobrar, presupuesto, OC, kardex, consolidado): sin estado ni DOM, probada con `node --test`.
 - **Preferencias globales (`prefs`)** separadas de los ajustes por finca: tema, densidad, menú plegado, notificaciones leídas y usuario.
 - **Presupuesto comparado con «lo esperado»** (presupuesto × avance del ciclo) y no con el total, para no marcar todo en verde al inicio del ciclo ni todo en rojo al final. Limitación: los costos que se concentran al inicio (preparación de suelo) salen como sobregiro en parcelas recién sembradas.
+- **Vercel publica la raíz tal cual (v3).** No debe existir un script `build` en `package.json` (ver `AGENTS.md`). Vercel sirve `main` en producción y cada rama como vista previa.
+- **Decisión comercial (2026-10-07): SaaS multiempresa con base compartida y RLS** (modelo A de `PLAN_SAAS.md`), una instalación de la app, subdominio por empresa bajo `*.agropina.datacenterpc.com`, cobro mensual por pasarela detrás de un **adaptador** (independiente de Pagadito u otra), respaldos cifrados y de solo agregar en el VPS de datos. **El subdominio no es la seguridad:** el aislamiento lo dan el inicio de sesión, RLS y sesiones por subdominio.
 - **Diseño tipo SAP Fiori / Oracle Redwood / Dynamics:** cabecera de objeto con facetas y pestañas, tablas densas con totales y exportación, formularios en panel lateral, estados con chips de semáforo, paleta de comandos. Fuente IBM Plex por legibilidad de cifras (tabular).
 
 ## 5. Modelo de datos (`localStorage['agropina_v3']`)
@@ -127,7 +140,11 @@ MD-2 1,8 · 65 000 · 270/210/155 · Golden 1,7 · 65 000 · 270/210/155 · Caye
 - Repositorio local: `/home/user/agropina-app.` (el nombre termina en punto; es el nombre real del repo en GitHub).
 - Node 22 con Playwright global (`NODE_PATH=$(npm root -g)`) y Chromium en `/opt/pw-browsers`.
 - Proxy: solo funcionan `registry.npmjs.org`, GitHub y los dominios de Anthropic; el resto da 403. Detalles y trampas en `AGENTS.md`.
-- No hay CLI `gh`; GitHub se maneja con las herramientas MCP `mcp__github__*` (las herramientas diferidas se cargan con `ToolSearch`).
+- No hay CLI `gh`; GitHub se maneja con las herramientas MCP `mcp__github__*` (las herramientas diferidas se cargan con `ToolSearch`). Con ellas se pueden leer PR, comentarios y estados, actualizar y fusionar PR; **no se pueden borrar ramas** (ni `git push --delete` funciona por el proxy: 403).
+- Sitios bloqueados por el proxy al probarlos: `pagadito.com`, `help.take.app`, `facturele.com`. `WebSearch` sí funciona (solo EE. UU.); `WebFetch` falla con `EGRESS_BLOCKED` en esos dominios.
+- Estado de despliegue de Vercel: aparece como estado de commit en el PR (`get_status`) o en `https://api.github.com/repos/datacenterfruvercpp/agropina-app./commits/<sha>/status`.
+- Desde el entorno **no hay acceso SSH ni red a los VPS del usuario**: la infraestructura se entrega como archivos e instructivo en el repositorio.
+- Repositorio de `facto-cr` adjunto a la sesión en `/home/user/facto-cr` (solo lectura/consulta; no trabajar ahí sin que el usuario lo pida).
 - Carpeta temporal de la sesión (se pierde): capturas y la copia de vista previa. Todo lo importante está ya en el repositorio.
 
 ### Vista previa en claude.ai (Artifact)
@@ -138,7 +155,8 @@ Para actualizarla desde una conversación nueva: `python3 scripts/build-preview.
 ## 8. Limitaciones y problemas conocidos
 
 - Datos solo en el dispositivo y en el navegador usado; borrar datos del sitio los elimina. Mitigación: respaldo JSON periódico.
-- Sin multiusuario ni sincronización. El «usuario» y su rol son solo una etiqueta para la auditoría: **no hay inicio de sesión ni permisos**.
+- Sin multiusuario ni sincronización. El «usuario» y su rol son solo una etiqueta para la auditoría: **no hay inicio de sesión ni permisos**. **Esto impide venderla como servicio hasta completar las etapas 1 a 3 de `PLAN_SAAS.md`.**
+- Hoy `main` en Vercel funciona como app **de un solo dispositivo y sin cuentas**: no debe ofrecerse a clientes como servicio multiempresa todavía.
 - Todas las fincas comparten el mismo `localStorage` (~5 MB). Con varias fincas y años de datos puede llenarse; la app avisa si no puede guardar.
 - La planilla calcula jornales y montos brutos: no incluye cargas sociales (CCSS), aguinaldo, vacaciones ni deducciones.
 - Cuentas por cobrar sin abonos parciales ni notas de crédito: una venta está pendiente o pagada.
@@ -153,8 +171,8 @@ Para actualizarla desde una conversación nueva: `python3 scripts/build-preview.
 
 ## 9. Ideas pendientes (backlog, sin comprometer)
 
-1. Publicar en GitHub Pages y configurar la rama de despliegue.
-2. Sincronización en la nube (p. ej. Supabase) con **inicio de sesión, roles y permisos** reales (hoy el usuario es solo una etiqueta).
+1. **SaaS multiempresa** (`PLAN_SAAS.md`): servidor Postgres con RLS, inicio de sesión y roles, alta automática de empresas con subdominio, cobros con suscripción, panel del administrador, respaldos al VPS de datos. *Prioridad máxima.*
+2. Sincronización con copia local sin conexión y reglas de conflicto (parte de la etapa 1).
 3. Cargas sociales y pago de planilla (CCSS, aguinaldo, vacaciones, comprobantes); costos fijos e indirectos.
 4. Abonos parciales, notas de crédito y facturación electrónica (integración con `facto-cr`).
 5. Fotos de monitoreo y de cosecha (adjuntos), con geoetiqueta.

@@ -1,10 +1,12 @@
 # AGENTS.md · AgroPiña Enterprise
 
-Instrucciones para agentes (Claude Code u otros) que trabajen en este repositorio. Léelo completo antes de tocar código. El estado del proyecto está en `CONTINUIDAD.md` y el siguiente paso concreto en `PUNTO_DE_REANUDACION.md`.
+Instrucciones para agentes (Claude Code u otros) que trabajen en este repositorio. Léelo completo antes de tocar código. El estado del proyecto está en `CONTINUIDAD.md`, el siguiente paso concreto en `PUNTO_DE_REANUDACION.md` y el plan comercial/SaaS en `PLAN_SAAS.md`.
 
 ## Qué es
 
 ERP agrícola (PWA) para fincas de piña, multi-finca, con diseño tipo SAP Fiori / Oracle Redwood / Dynamics 365 (Costa Rica como contexto por defecto). Sin backend: todo corre en el navegador y los datos viven en `localStorage`. Idioma de la interfaz y de los comentarios: **español**. El usuario habla español; responde en español.
+
+**Dirección del producto (2026-10-07):** AgroPiña se va a **vender como servicio de alquiler mensual** a empresas de 3, 5 o 10 usuarios, cada una con su base de datos aislada y su subdominio de `datacenterpc.com`, con cobro por tarjeta. El plan completo, las decisiones tomadas, las pendientes y las etapas están en **`PLAN_SAAS.md`: léelo antes de diseñar cualquier cosa que toque datos, usuarios, pagos, dominios o servidores**. Mientras no se construya, la app sigue siendo de un solo dispositivo.
 
 Pila: Vue 3 (build global, sin SFC ni bundler), Tailwind compilado, Chart.js, Leaflet, SheetJS, Font Awesome, fuente IBM Plex Sans/Mono. Todas las librerías están **dentro del repo** (`vendor/`), no se usa ningún CDN.
 
@@ -66,6 +68,17 @@ Las vistas reciben `props.query` (parámetros tras `?` en el hash, p. ej. `#/fin
 9. **Interfaz (estilo empresarial).** Modo claro y oscuro (clase `dark` en `<html>`) y densidad compacta (clase `compact`). Móvil (menú inferior) y escritorio (barra de sistema + menú lateral). Toda pantalla usa `<ap-page-header>` (migas según el grupo de `NAV`, acciones, `#facets` con indicadores y `#tabs`), `<ap-tile>` para KPI y `<ap-data-table>` para listados (con `id` único, `export-name` y totales). Debe verse bien a 390, 768, 1 024 y 1 440 px, sin desplazamiento horizontal de la página (en grids usa `min-w-0` en los hijos). Mensajes en español claro; nunca errores técnicos crudos (`Failed to fetch`).
 10. **Estados sin datos.** Toda lista o gráfico necesita estado vacío (`<ap-empty>`) y toda dependencia de red necesita estado de error con «Reintentar». Un indicador de carga nunca debe quedar eterno.
 
+## Reglas para la transición a SaaS (vigentes desde ya)
+
+1. **Aislamiento entre empresas es un requisito de seguridad, no una función.** Toda tabla con datos de clientes lleva `empresa_id` y política RLS; ninguna consulta confía en filtros del cliente. Cada cambio de esquema debe venir con **prueba automática de aislamiento** (un usuario de la empresa A no lee ni escribe datos de la B).
+2. **El subdominio no autentica.** Sesiones y cookies por subdominio; verificar siempre la membresía del usuario en la empresa del subdominio.
+3. **Secretos fuera del repositorio** (claves de base, pasarela, cifrado de respaldos, SSH). Solo plantillas `.env.example`. Nunca commitear tokens ni contraseñas; si aparece alguno, avisar y rotarlo.
+4. **Pagos detrás de un adaptador** (`pasarela`): la app guarda el estado de la suscripción y un registro de eventos de pago con id externo único (idempotencia); nunca datos de tarjeta. Estados: `prueba → activa → vencida → solo_lectura → suspendida → cancelada`. **Nunca borrar datos de un cliente sin aviso y plazo.**
+5. **Compatibilidad:** no romper la migración desde `localStorage` (`agropina_v3`, `agropina_v2`, v1): los clientes que ya usen la versión local deben poder subir sus datos al servidor.
+6. **Nombres de subdominio reservados** (`www`, `admin`, `api`, `app`, `mail`…): ver lista en `PLAN_SAAS.md`, sección 4.
+7. **Infraestructura como código en el repositorio** (Docker Compose, Caddy, scripts de respaldo/restauración, migraciones SQL, instructivo con comandos). El agente **no tiene acceso a los VPS**: nunca afirmes haber instalado o probado algo en ellos.
+8. **Respaldos:** cifrados, de solo agregar, con restauración probada. No dar por buena una configuración de respaldos sin una prueba de restauración.
+
 ## Cómo añadir cosas
 
 - **Vista nueva:** crear `js/views/<nombre>.js` que defina `AP.views.<nombre> = { props: { query: Object }, setup(props){…}, template: \`…\` }`, añadir su `<script>` en `index.html` (antes de `app.js`), su entrada en `VIEWS` y en el grupo correcto de `NAV` de `js/app.js` (aparece sola en la paleta de comandos), y su archivo en `SHELL` de `sw.js`. Añádela a la lista de `tests/e2e/capturas.js`.
@@ -92,16 +105,27 @@ Las vistas reciben `props.query` (parámetros tras `?` en el hash, p. ej. `#/fin
 - La app arranca en `DOMContentLoaded`: cualquier script que use `AP.store.state` desde `index.html` debe esperar a ese evento (ver la carga de la demo en `scripts/build-preview.py`).
 - El build de producción de Vue **no** avisa de componentes o props inexistentes: revisa las capturas, no solo la consola.
 - Vista previa en claude.ai (Artifact): el visor bloquea `fetch` externo, imágenes/teselas externas, service workers, descargas y `alert/confirm`. Sirve para mostrar el diseño, no para validar clima real ni mapa satelital. Se publica con `scripts/build-preview.py`.
+- **GitHub desde el entorno:** las herramientas MCP permiten leer/actualizar/fusionar PR, pero **no borrar ramas**; `git push --delete` falla (403). Si hay que borrar una rama, indica al usuario cómo hacerlo en GitHub (Branches → papelera) y verifica con `git ls-remote --heads origin`.
+- **Sitios bloqueados** por el proxy (`pagadito.com`, `facturele.com`, etc.): `WebFetch` falla con `EGRESS_BLOCKED`. Di claramente que no se pudo abrir y que el análisis usa fuentes secundarias; no inventes datos del sitio.
 - Para actualizar el Artifact existente desde otra conversación hay que leerlo primero y publicar pasando su `url` (ver `CONTINUIDAD.md`).
 
 ## Flujo de trabajo y git
 
 - Rama de trabajo asignada: **`claude/zen-goldberg-xdoq26`**. No empujes a otras ramas sin permiso.
-- **No crees pull requests** salvo que el usuario lo pida explícitamente. (El PR #1, de la rama de trabajo hacia `main`, ya existe: añade commits a esa rama en vez de abrir otro.)
+- **No crees pull requests** salvo que el usuario lo pida explícitamente. El PR #1 ya se **fusionó** en `main` (2026-10-07) y no se reutiliza: el trabajo nuevo parte de `main` actualizado (`git fetch origin main && git checkout -B <rama> origin/main`; mantener el nombre de la rama de trabajo). Si la rama conserva commits sin fusionar, consérvalos.
 - Commits en español, asunto corto + cuerpo con el porqué. Termina cada commit con las líneas de atribución que indique la sesión (`Co-Authored-By: …` y `Claude-Session: …`).
 - `git push -u origin <rama>`; si falla por red, reintenta hasta 4 veces con espera de 2, 4, 8 y 16 s.
 - No commitees `node_modules/` (está en `.gitignore`). Sí se commitean `vendor/` y `css/tailwind.css` porque la app se publica tal cual, sin paso de compilación.
 - Antes de dar por cerrada una tarea: tests en verde, `npm run build:css` si tocaste clases, actualizar `CHANGELOG.md`, `CONTINUIDAD.md` y `PUNTO_DE_REANUDACION.md`.
+
+## Lecciones de conducta (errores ya cometidos)
+
+- **Confirma en qué repositorio se trabaja antes de actuar.** En la sesión del 2026-10-07 se creó por error una rama en `facto-cr` creyendo que la mejora era para ese proyecto; costó una intervención manual del usuario. Si el pedido es ambiguo, pregunta.
+- **No toques ramas ajenas** (p. ej. `claude/rediseno-frontend-correcciones` de `facto-cr` tiene trabajo real).
+- **No des por hecho un despliegue verde:** revisa el estado de Vercel del commit (`get_status`) antes de fusionar.
+- **Un PR fusionado no se reutiliza.**
+- No incluyas el identificador del modelo en archivos del repositorio, comentarios ni descripciones; solo en las líneas de atribución de los commits que indique la sesión.
+- Responde en español, sin rodeos; di qué verificaste y qué no.
 
 ## Cómo informar al usuario
 

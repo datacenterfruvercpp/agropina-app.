@@ -68,6 +68,7 @@ npm run serve      # http://localhost:8080
 |---|---|
 | [`PUNTO_DE_REANUDACION.md`](PUNTO_DE_REANUDACION.md) | Dónde quedó el trabajo y qué hacer a continuación |
 | [`CONTINUIDAD.md`](CONTINUIDAD.md) | Contexto completo: decisiones, modelo de datos, reglas de negocio, entorno, backlog |
+| [`PLAN_SAAS.md`](PLAN_SAAS.md) | Plan para comercializarla como servicio de alquiler mensual: multiempresa, subdominios, pagos, servidores y respaldos |
 | [`CHANGELOG.md`](CHANGELOG.md) | Historial detallado de cambios |
 | [`AGENTS.md`](AGENTS.md) | Reglas y comandos para agentes y colaboradores (`CLAUDE.md` apunta a él) |
 | [`tests/e2e/LEEME.md`](tests/e2e/LEEME.md) | Pruebas de navegador con Playwright |
