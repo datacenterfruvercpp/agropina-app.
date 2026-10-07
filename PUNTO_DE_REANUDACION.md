@@ -10,7 +10,7 @@ Dónde quedó el trabajo y qué hacer a continuación. Léelo primero al retomar
 - El pull request https://github.com/datacenterfruvercpp/agropina-app./pull/1 (rama de trabajo → `main`) se actualizó solo con el push; sigue sin fusionar. `main` todavía tiene la v1.
 - Vista previa privada en claude.ai, ya con la v3: https://claude.ai/artifact/TA9Xs68tdJ9z1SVfVEHE8n (sin Excel, clima simulado, sin teselas del mapa).
 - **No hay trabajo a medias ni cambios sin commitear.**
-- Pendiente de limpieza (lo hace el usuario): en `datacenterfruvercpp/facto-cr` quedó una rama `claude/zen-goldberg-xdoq26` creada por error, idéntica a su `main`; se puede borrar desde GitHub.
+- La rama `claude/zen-goldberg-xdoq26` creada por error en `datacenterfruvercpp/facto-cr` ya fue borrada (2026-10-07).
 
 ## Siguiente paso recomendado (en orden)
 

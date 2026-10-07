@@ -38,7 +38,7 @@ El usuario todavía no ha revisado la v3. Su opinión es lo siguiente que hay qu
 
 **Sesión 2026-10-07 (v3.0 «Enterprise»)**
 
-1. *«Mejora totalmente el diseño y la funcionalidad… tipo SAP, Oracle, Dynamics»*. Al principio lo interpreté como un pedido para `facto-cr` y creé por error la rama `claude/zen-goldberg-xdoq26` en ese repositorio (idéntica a su `main`; el proxy no dejó borrarla en remoto; el usuario puede borrarla desde GitHub). El usuario aclaró: «la mejora es para agropiña».
+1. *«Mejora totalmente el diseño y la funcionalidad… tipo SAP, Oracle, Dynamics»*. Al principio lo interpreté como un pedido para `facto-cr` y creé por error la rama `claude/zen-goldberg-xdoq26` en ese repositorio (idéntica a su `main`; el proxy no dejó borrarla en remoto; el usuario la borró desde GitHub el mismo día). El usuario aclaró: «la mejora es para agropiña».
 2. Se rehízo el sistema de diseño (IBM Plex, barra de sistema navy, menú agrupado, cabeceras tipo «object page», tablas empresariales, mosaicos, paleta de comandos) y se añadieron los módulos ERP (ver `CHANGELOG.md` 3.0.0).
 3. Verificación con Chromium: se corrigieron desbordes en móvil y a 1 024 px, cifras recortadas en mosaicos, el menú que tapaba «Configuración» a 900 px de alto, totales enteros con decimales, la migración que no se guardaba hasta el primer cambio y la vista previa que abría sin la demostración.
 
