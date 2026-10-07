@@ -26,13 +26,20 @@ function mockWeather() {
     await page.screenshot({ path: `${SP}/shots/${name}-00-empty.png`, fullPage: false });
     await page.evaluate(() => AP.store.loadDemo());
     await page.waitForTimeout(500);
-    for (const v of ['dashboard','parcelas','parcelas/p1','labores','calendario','mapa','clima','cosechas','sanidad','inventario','finanzas','ajustes']) {
+    for (const v of ['dashboard','parcelas','parcelas/p1','labores','labores?vista=tabla','calendario','mapa','clima','cosechas','sanidad','inventario','inventario?tab=movimientos','compras','compras?tab=proveedores','ventas','ventas?tab=clientes','personal','personal?tab=trabajadores','finanzas','finanzas?tab=presupuesto','finanzas?tab=proyeccion','reportes','reportes?r=consolidado','auditoria','ajustes','ajustes?tab=fincas','ajustes?tab=usuario']) {
       await page.evaluate(v => location.hash = '#/'+v, v);
       await page.waitForTimeout(700);
-      await page.screenshot({ path: `${SP}/shots/${name}-${v.replace('/','_')}.png`, fullPage: true });
+      await page.screenshot({ path: `${SP}/shots/${name}-${v.replace(/[\/?=&]/g,'_')}.png`, fullPage: true });
     }
+    // paleta de comandos
+    await page.keyboard.press('Control+k');
+    await page.waitForTimeout(300);
+    await page.keyboard.type('bloque');
+    await page.waitForTimeout(300);
+    await page.screenshot({ path: `${SP}/shots/${name}-palette.png` });
+    await page.keyboard.press('Escape');
     // forms
-    for (const f of ['labor','cosecha','monitoreo','parcela','insumo','movimiento']) {
+    for (const f of ['labor','cosecha','monitoreo','parcela','insumo','movimiento','orden','trabajador','proveedor','cliente','finca']) {
       await page.evaluate(f => AP.store.openForm(f, f==='labor'?{parcelaId:'p3'}:{}), f);
       await page.waitForTimeout(400);
       await page.screenshot({ path: `${SP}/shots/${name}-form-${f}.png` });

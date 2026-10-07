@@ -1,4 +1,4 @@
-/* AgroPiña Pro · Vista: Mapa satelital de la finca con dibujo de linderos */
+/* AgroPiña Enterprise · Vista: Mapa satelital de la finca con dibujo de linderos */
 (function (AP) {
   'use strict';
   const { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } = Vue;
@@ -126,7 +126,7 @@
     },
     template: `
     <div>
-      <ap-page-header eyebrow="Operación" title="Mapa de la finca" subtitle="Imagen satelital, linderos de parcelas y cálculo de área georreferenciada.">
+      <ap-page-header eyebrow="Producción agrícola" title="Mapa de la finca" subtitle="Imagen satelital, linderos de parcelas y cálculo de área georreferenciada.">
         <ap-seg v-model="capa" :options="[{ value: 'satelite', label: 'Satélite', icon: 'fa-satellite' }, { value: 'mapa', label: 'Mapa', icon: 'fa-map' }]"></ap-seg>
       </ap-page-header>
       <div class="grid lg:grid-cols-4 gap-4">

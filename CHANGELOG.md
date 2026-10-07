@@ -2,6 +2,63 @@
 
 Formato: más reciente primero. Fechas en formato AAAA-MM-DD.
 
+## 3.0.0 · 2026-10-07 · AgroPiña Enterprise (ERP)
+
+Pedido del usuario: «mejora totalmente el diseño y la funcionalidad, hazle upgrade full premium con diseños tipo SAP, Oracle y Dynamics». La app pasa de herramienta agronómica a **ERP agrícola multi-finca**. Unas 6 200 líneas de JavaScript (antes ~4 000).
+
+### Diseño (estilo SAP Fiori / Oracle Redwood / Dynamics 365)
+- Tipografía **IBM Plex Sans / Mono** (reemplaza Plus Jakarta Sans), neutros fríos (`ink`) y barra de sistema azul marino.
+- **Barra de sistema:** selector de finca, búsqueda/paleta de comandos, clima, botón «Crear», campana de notificaciones y menú de usuario (tema y densidad).
+- **Menú lateral agrupado por módulos** (Producción agrícola, Cadena de suministro, Comercial, Recursos humanos, Finanzas y análisis, Administración), plegable (248/60 px) y con contadores.
+- **Cabecera de página tipo «object page»:** migas de pan, título, estado, acciones, banda de facetas (indicadores clave) y pestañas.
+- **Tablas de datos empresariales** (`ap-data-table`): orden por columna, búsqueda, selector de columnas (se recuerda por tabla), selección múltiple con acciones masivas, paginación, fila de totales y exportación a CSV y Excel.
+- **Mosaicos KPI** con minigráficos y semáforo; chips de estado uniformes; formularios en **panel lateral** en escritorio.
+- **Paleta de comandos** (Ctrl+K o «/»): ir a cualquier módulo, crear registros, cambiar de finca, buscar parcelas, insumos, personal, proveedores, clientes y órdenes, cambiar tema o densidad, exportar.
+- **Densidad cómoda/compacta** de las tablas. Tema y densidad se aplican antes del primer pintado.
+
+### Funciones ERP nuevas
+- **Multi-finca:** varias unidades productivas con datos independientes; crear (copiando catálogos, con stock en cero), cambiar y eliminar fincas; consolidado corporativo en Reportes.
+- **Órdenes de trabajo:** estados *Programada → En proceso → Realizada / Cancelada*, prioridad (alta/media/baja), **personal asignado** con jornales y tarifa; la mano de obra se calcula sola. Vistas **tablero (kanban)**, lista y tabla, con acciones masivas.
+- **Personal y planilla:** maestro de trabajadores (puesto, cuadrilla, tarifa por jornal, activo/inactivo) y **planilla de jornales** por semana, quincena o mes, por trabajador y por cuadrilla, con aviso de mano de obra sin asignar.
+- **Compras:** proveedores y **órdenes de compra** *Borrador → Aprobada → Recibida / Cancelada*; la recepción da entrada al inventario con costo promedio ponderado; numeración `OC-0001`; botón «Reponer stock bajo».
+- **Ventas y cobros:** clientes con días de crédito; cosechas con cliente, factura y estado de pago; **cuentas por cobrar** con antigüedad por tramos (al día, 1–30, 31–60, 61–90, > 90 días), DSO y cobro individual o masivo.
+- **Presupuesto vs real:** presupuesto estándar por hectárea y ciclo (mano de obra, insumos, otros), presupuesto propio por parcela, comparación con lo **esperado según el avance del ciclo** y semáforo (> 5 % atención, > 20 % sobregiro).
+- **Inventario:** tabla de existencias con proveedor, cantidades **en camino** (OC aprobadas), estado de reposición, **kardex** por insumo con saldo acumulado y creación de OC desde la selección.
+- **Centro de reportes:** 10 reportes (consolidado de fincas, costos por parcela, presupuesto, cuaderno de campo, kardex, planilla, ventas por cliente, antigüedad de cartera, compras por proveedor, historial fitosanitario) exportables a CSV/Excel.
+- **Auditoría:** bitácora de altas, cambios, eliminaciones, aprobaciones, recepciones y cobros con usuario y fecha (máximo 1 500 eventos por finca), con filtro y exportación.
+- **Notificaciones:** labores vencidas, stock bajo, OC atrasadas, cobros vencidos, carencias y alertas de clima; se marcan como leídas.
+- **Perfil de usuario** (nombre y rol) que firma la auditoría.
+
+### Pantallas rehechas
+- **Inicio:** saludo con facetas, 6 mosaicos (cosecha próxima, costo del mes, ingresos, por cobrar, órdenes de trabajo, inventario), «Mis tareas», clima con ventana de aplicación, «Requiere atención», ciclo por parcela y gráficos.
+- **Parcelas:** vista de **tarjetas o tabla**; ficha con cabecera de objeto, menú de acciones y tarjeta **Presupuesto vs real**.
+- **Cosechas:** tabla con cliente, factura y estado de cobro; mosaico de cuentas por cobrar.
+- **Finanzas:** pestañas *Resultados*, *Presupuesto vs real* y *Proyección*.
+- **Configuración:** pestañas Finca activa, Fincas, Presupuesto, Usuario y apariencia, Datos y respaldo.
+- **Excel:** libro de **16 hojas** (nuevas: Presupuesto vs real, Cuentas por cobrar, Clientes, Kardex, Proveedores, Órdenes de compra, Personal, Planilla del mes, Auditoría); estados de labor con su etiqueta.
+
+### Datos
+- Nuevo almacenamiento **`agropina_v3`** = `{ app, version: 3, fincaActiva, fincas[], prefs, datos: { [fincaId]: { settings, …colecciones } } }`. Migración automática desde `agropina_v2` y la v1, que se **guarda de inmediato** en v3 (los datos viejos no se borran).
+- Colecciones nuevas: `trabajadores`, `proveedores`, `ordenes`, `clientes`, `auditoria`. El tema pasa de `settings` a `prefs` (global).
+- El respaldo JSON incluye todas las fincas; la importación acepta un respaldo completo (v3) o de una sola finca (v1/v2).
+- Lógica pura nueva en `js/negocio.js` (planilla, períodos, cuentas por cobrar, presupuesto, OC, kardex, consolidado).
+
+### Corregido
+- La vista previa abría sin la finca de demostración (el script se ejecutaba antes del arranque de la app).
+- Desbordes horizontales en móvil (ficha de parcela) y a 1 024 px (Ventas).
+- Totales enteros de las tablas se mostraban con decimales (`10,00`).
+- El menú lateral tapaba «Configuración» en pantallas de 900 px de alto.
+- Los mosaicos recortaban las cifras («$5…») cuando tenían minigráfico.
+
+### Pruebas
+- `tests/negocio.test.js`: 9 pruebas nuevas (planilla, períodos, cuentas por cobrar, tramos, presupuesto, OC, kardex, consolidado). `npm test`: **18/18**.
+- `tests/e2e/reglas-v3.js` (nuevo): 36 comprobaciones de migración, multi-finca, OC → inventario, OT con personal → costo y planilla, cobros, auditoría, respaldo/restauración y Excel.
+- `tests/e2e/capturas.js` ampliado a 27 vistas y 11 formularios en escritorio, móvil y oscuro, más la paleta de comandos; sin errores de JavaScript. Sin desbordes horizontales a 390, 768 y 1 024 px.
+
+### Cambiado
+- Versión **3.0.0** en `package.json`, `AP.VERSION` y caché del service worker (`agropina-v3.0.0`, con los archivos y fuentes nuevos). Manifiesto: «AgroPiña Enterprise», color `#0f1b2b`.
+- Datos de demostración: dos fincas, 4 proveedores, 10 trabajadores, 3 clientes, 3 órdenes de compra, cosechas con cobros pendientes y un presupuesto estándar a la escala de los costos de la demo (700 por ha).
+
 ## 2.0.1 · 2026-10-06
 
 ### Corregido

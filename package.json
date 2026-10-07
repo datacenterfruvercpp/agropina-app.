@@ -1,8 +1,8 @@
 {
   "name": "agropina-pro",
-  "version": "2.0.1",
+  "version": "3.0.0",
   "private": true,
-  "description": "AgroPiña Pro — plataforma de gestión inteligente para fincas de piña",
+  "description": "AgroPiña Enterprise — ERP agrícola multi-finca para fincas de piña",
   "scripts": {
     "vendor": "node scripts/vendor.mjs",
     "build:css": "tailwindcss -c tailwind.config.js -i src/tailwind.css -o css/tailwind.css --minify",
@@ -12,7 +12,8 @@
     "serve": "npx --yes http-server -p 8080 -c-1 ."
   },
   "dependencies": {
-    "@fontsource-variable/plus-jakarta-sans": "^5.1.1",
+    "@fontsource/ibm-plex-mono": "^5.3.0",
+    "@fontsource/ibm-plex-sans": "^5.3.0",
     "@fortawesome/fontawesome-free": "^6.7.2",
     "chart.js": "^4.4.7",
     "leaflet": "^1.9.4",

@@ -29,12 +29,14 @@ s = open(os.path.join(root, 'index.html'), encoding='utf-8').read()
 head = re.search(r'<head>(.*?)</head>', s, re.S).group(1)
 body = re.search(r'<body>(.*?)</body>', s, re.S).group(1)
 links = re.findall(r'<link rel="stylesheet"[^>]*>', head)
-theme = re.search(r'<!-- Tema antes.*?</script>', head, re.S).group(0)
+theme = re.search(r'<!-- Tema.*?</script>', head, re.S).group(0)
 boot = ('<script src="js/preview-weather.js"></script>\n  <script src="js/app.js"></script>\n'
-        '  <script>try{var S=AP.store;if(!S.state.parcelas.length&&!S.state.settings.onboarded)S.loadDemo();}catch(e){}</script>')
+        # La app arranca en DOMContentLoaded: la demo se carga después, cuando el estado ya está inicializado
+        '  <script>(function(){function demo(){try{var S=AP.store;if(!S.state.parcelas.length&&!S.state.settings.onboarded)S.loadDemo();}catch(e){}}'
+        'if(document.readyState===\'loading\')document.addEventListener(\'DOMContentLoaded\',demo);else demo();})();</script>')
 assert '<script src="js/app.js"></script>' in body
 body = body.replace('<script src="js/app.js"></script>', boot)
-open(os.path.join(out, 'index.html'), 'w', encoding='utf-8').write('\n'.join(['<title>AgroPiña Pro</title>'] + links + [theme, body]))
+open(os.path.join(out, 'index.html'), 'w', encoding='utf-8').write('\n'.join(['<title>AgroPiña Enterprise</title>'] + links + [theme, body]))
 
 app = open(os.path.join(out, 'js', 'app.js'), encoding='utf-8').read()
 app, n = re.subn(r"if \('serviceWorker' in navigator.*?\n    }\n", "", app, flags=re.S)

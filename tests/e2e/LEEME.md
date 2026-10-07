@@ -15,8 +15,9 @@ mkdir -p /tmp/shots
 
 | Script | Qué comprueba |
 |---|---|
-| `capturas.js <carpeta>` | Carga la finca de demostración y recorre las 12 vistas y los 6 formularios en escritorio, móvil (390 px) y modo oscuro; guarda capturas en `<carpeta>/shots/` y falla si hay errores de JavaScript. El clima se simula interceptando `**/api.open-meteo.com/**`. Las teselas del mapa se bloquean a propósito (los errores de red `ERR_FAILED` se ignoran). |
+| `capturas.js <carpeta>` | Carga la finca de demostración y recorre 27 vistas (incluidas las pestañas de compras, ventas, personal, finanzas, reportes y configuración), la paleta de comandos y 11 formularios en escritorio, móvil (390 px) y modo oscuro; guarda capturas en `<carpeta>/shots/` y falla si hay errores de JavaScript. El clima se simula interceptando `**/api.open-meteo.com/**`. Las teselas del mapa se bloquean a propósito (los errores de red `ERR_FAILED` se ignoran). |
 | `reglas-negocio.js` | Migración de datos de la v1, descuento y devolución de inventario, deshacer, completar labor programada, costo promedio ponderado, cierre de ciclo, persistencia tras recargar y descarga del Excel. Imprime los valores para revisarlos. |
+| `reglas-v3.js` | Reglas ERP con comprobaciones automáticas (36): migración v2 → v3 y tema temprano, multi-finca (cambiar, crear con catálogos, consolidado, persistencia, eliminar), OC borrador → aprobada → recibida con costo promedio, OT con personal → costo y planilla, ventas a crédito y cobro, auditoría con usuario, respaldo completo y restauración, y libro Excel de 16 hojas. Termina con «TODO CORRECTO» o con la lista de fallos (código de salida 1). |
 | `formulario-multiparcela.js <carpeta>` | Registro de una labor en dos parcelas a la vez desde la interfaz móvil y comprobación del reparto de insumos y costos por área. |
 
 Ejemplo:
@@ -24,6 +25,7 @@ Ejemplo:
 ```bash
 node tests/e2e/capturas.js /tmp          # capturas en /tmp/shots
 node tests/e2e/reglas-negocio.js
+node tests/e2e/reglas-v3.js
 node tests/e2e/formulario-multiparcela.js /tmp
 ```
 
@@ -32,5 +34,6 @@ node tests/e2e/formulario-multiparcela.js /tmp
 ## Notas
 
 - Los scripts asumen el servidor en el puerto 8765 y fecha «de hoy» real: la finca de demostración se genera con fechas relativas.
-- Resultados esperados de `reglas-negocio.js` con la finca de demostración (referencia al 2026-10-05): la inducción de «La Esperanza» registrada hoy deja la fase en `floracion`; stock de Ethrel 14 → 12 al completar la labor; el cierre de ciclo en «Bloque Norte A» la pasa a `ciclo = 2` con `fechaInduccion = null`.
+- Resultados esperados de `reglas-negocio.js` con la finca de demostración (referencia al 2026-10-07): la inducción de «La Esperanza» registrada hoy deja la fase en `floracion`; stock de Ethrel 14 → 12 al completar la labor; el cierre de ciclo en «Bloque Norte A» la pasa a `ciclo = 2` con `fechaInduccion = null`. (Completar después la orden `l13` deja el Ethrel en negativo porque la prueba ya consumió stock antes: es lo esperado.)
+- `reglas-v3.js` necesita `node_modules/xlsx` (`npm install`) para leer el Excel descargado.
 - Para la copia de vista previa (Artifact) hay que anteponer `<meta charset="utf-8">` si se sirve con `http.server`, porque el publicador agrega esa etiqueta pero el servidor de pruebas no.

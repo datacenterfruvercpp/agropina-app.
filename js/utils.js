@@ -1,4 +1,4 @@
-/* AgroPiña Pro · Utilidades generales (fechas, formato, geometría, archivos) */
+/* AgroPiña Enterprise · Utilidades generales (fechas, formato, geometría, archivos) */
 (function (AP) {
   'use strict';
 

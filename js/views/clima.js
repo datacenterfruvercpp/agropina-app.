@@ -1,4 +1,4 @@
-/* AgroPiña Pro · Vista: Clima, ventanas de aplicación y riesgo agroclimático */
+/* AgroPiña Enterprise · Vista: Clima, ventanas de aplicación y riesgo agroclimático */
 (function (AP) {
   'use strict';
   const { computed } = Vue;
@@ -65,7 +65,7 @@
     },
     template: `
     <div>
-      <ap-page-header eyebrow="Inteligencia" title="Clima y riesgo" :subtitle="S.ubicacionActual.value.nombre + (w ? ' · ' + Math.round(w.elevation || 0) + ' m s. n. m.' : '')">
+      <ap-page-header eyebrow="Producción agrícola" title="Clima y riesgo" :subtitle="S.ubicacionActual.value.nombre + (w ? ' · ' + Math.round(w.elevation || 0) + ' m s. n. m.' : '')">
         <a href="#/ajustes" class="btn btn-outline"><i class="fa-solid fa-location-dot"></i>Cambiar ubicación</a>
         <button class="btn btn-primary" @click="S.loadWeather(true)" :disabled="st.weather.status === 'loading' || st.weather.status === 'refreshing'">
           <i :class="['fa-solid fa-rotate', st.weather.status === 'refreshing' || st.weather.status === 'loading' ? 'fa-spin' : '']"></i>Actualizar

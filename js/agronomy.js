@@ -1,4 +1,4 @@
-/* AgroPiña Pro · Motor agronómico: fenología, rendimiento, carencias y riesgo climático */
+/* AgroPiña Enterprise · Motor agronómico: fenología, rendimiento, carencias y riesgo climático */
 (function (AP) {
   'use strict';
   const U = AP.utils, C = AP.catalog;

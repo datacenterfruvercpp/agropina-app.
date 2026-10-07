@@ -1,4 +1,4 @@
-/* AgroPiña Pro · Vistas: Parcelas (listado) y Detalle de parcela */
+/* AgroPiña Enterprise · Vistas: Parcelas (listado) y Detalle de parcela */
 (function (AP) {
   'use strict';
   const { ref, computed } = Vue;
@@ -31,11 +31,35 @@
         return out.sort(sorters[orden.value]);
       });
       const totales = computed(() => ({ ha: U.sum(lista.value, (x) => x.p.hectareas), t: U.sum(lista.value, (x) => x.prod.toneladas), plantas: U.sum(lista.value, (x) => x.prod.plantas) }));
-      return { st, q, fase, orden, archivadas, fasesFiltro, lista, totales, S, U, C };
+      let vistaIni = 'tarjetas';
+      try { vistaIni = localStorage.getItem('agropina_parcelas_vista') || 'tarjetas'; } catch (e) { /* sin almacenamiento */ }
+      const vista = ref(vistaIni);
+      const setVista = (v) => { vista.value = v; try { localStorage.setItem('agropina_parcelas_vista', v); } catch (e) { /* sin almacenamiento */ } };
+      const filas = computed(() => lista.value.map((x) => ({
+        id: x.p.id, codigo: x.p.codigo, nombre: x.p.nombre, variedad: x.p.variedad, ciclo: x.e.etiquetaCiclo, hectareas: x.p.hectareas, fase: x.e.fase,
+        avance: x.e.progreso, induccion: x.e.induccion || x.e.induccionEst, induccionReal: !!x.e.induccion, cosecha: x.e.cosechaEst, dias: x.e.diasParaCosecha,
+        toneladas: x.prod.toneladas, costo: (S.costos.value[x.p.id] || {}).ciclo || 0, carencia: x.car, alertas: x.recs, color: x.p.color
+      })));
+      const cols = [
+        { key: 'codigo', label: 'Código', cls: 'font-mono text-[12px]' },
+        { key: 'nombre', label: 'Parcela', cls: 'font-semibold' },
+        { key: 'variedad', label: 'Variedad', hidden: true },
+        { key: 'ciclo', label: 'Ciclo' },
+        { key: 'hectareas', label: 'Área (ha)', align: 'right', sum: true, format: (v) => U.fmtNum(v, 2) },
+        { key: 'fase', label: 'Fase', value: (r) => C.FASES[r.fase].label, sortValue: (r) => C.FASES_CICLO.indexOf(r.fase) },
+        { key: 'avance', label: 'Avance', align: 'right', format: (v) => U.fmtPct(v) },
+        { key: 'induccion', label: 'Inducción', format: (v) => U.fmtDate(v, 'short'), exportValue: (r) => r.induccion },
+        { key: 'cosecha', label: 'Cosecha est.', format: (v) => U.fmtDate(v, 'short'), exportValue: (r) => r.cosecha },
+        { key: 'toneladas', label: 'Producción (t)', align: 'right', sum: true, format: (v) => U.fmtNum(v, 1) },
+        { key: 'costo', label: 'Costo ciclo', align: 'right', sum: true, format: (v) => AP.money(v) },
+        { key: 'alertas', label: 'Alertas', align: 'right' }
+      ];
+      return { st, q, fase, orden, archivadas, fasesFiltro, lista, totales, vista, setVista, filas, cols, S, U, C };
     },
     template: `
     <div>
-      <ap-page-header eyebrow="Operación" title="Parcelas" :subtitle="U.fmtNum(totales.ha, 1) + ' ha · ' + U.fmtCompact(totales.plantas) + ' plantas · ' + U.fmtNum(totales.t) + ' t estimadas'">
+      <ap-page-header eyebrow="Producción agrícola" title="Parcelas" :subtitle="U.fmtNum(totales.ha, 1) + ' ha · ' + U.fmtCompact(totales.plantas) + ' plantas · ' + U.fmtNum(totales.t) + ' t estimadas'">
+        <ap-seg :model-value="vista" @update:model-value="setVista" :options="[{ value: 'tarjetas', icon: 'fa-grip', title: 'Tarjetas' }, { value: 'tabla', icon: 'fa-table', title: 'Tabla' }]"></ap-seg>
         <a href="#/mapa" class="btn btn-outline"><i class="fa-solid fa-map-location-dot"></i>Mapa</a>
         <button class="btn btn-primary" @click="S.openForm('parcela')"><i class="fa-solid fa-plus"></i>Nueva parcela</button>
       </ap-page-header>
@@ -56,7 +80,16 @@
         </div>
       </div>
 
-      <div v-if="lista.length" class="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div v-if="lista.length && vista === 'tabla'" class="card overflow-hidden">
+        <ap-data-table id="parcelas" title="Parcelas" export-name="Parcelas" :columns="cols" :rows="filas" :searchable="false" clickable @open="(r) => $go('parcelas/' + r.id)">
+          <template #cell-nombre="{ row }"><span class="inline-block w-2 h-2 rounded-full mr-2 align-middle" :style="{ background: row.color }"></span><span class="font-semibold">{{ row.nombre }}</span></template>
+          <template #cell-fase="{ row }"><ap-fase :fase="row.fase" short></ap-fase></template>
+          <template #cell-induccion="{ row }"><span :class="row.induccionReal ? '' : 'muted italic'">{{ U.fmtDate(row.induccion, 'short') }}</span></template>
+          <template #cell-cosecha="{ row }"><span :class="row.dias <= 0 ? 'text-rose-600 font-semibold' : ''">{{ row.dias <= 0 ? 'En cosecha' : U.fmtDate(row.cosecha, 'short') }}</span></template>
+          <template #cell-alertas="{ row }"><span v-if="row.carencia" class="st st-err mr-1"><i class="fa-solid fa-shield-halved text-[9px]"></i>{{ row.carencia.dias }} d</span><span v-if="row.alertas" class="st st-warn">{{ row.alertas }}</span><span v-if="!row.carencia && !row.alertas" class="muted">—</span></template>
+        </ap-data-table>
+      </div>
+      <div v-else-if="lista.length" class="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
         <a v-for="(x, i) in lista" :key="x.p.id" :href="'#/parcelas/' + x.p.id" class="card card-hover overflow-hidden flex flex-col animate-fade-up" :style="{ animationDelay: Math.min(i, 8) * 40 + 'ms' }">
           <div class="h-1.5" :style="{ background: 'linear-gradient(90deg,' + x.p.color + ',' + x.p.color + '66)' }"></div>
           <div class="p-4 sm:p-5 flex-1 flex flex-col">
@@ -128,41 +161,37 @@
       const editar = () => S.openForm('parcela', p.value);
       const eliminar = async () => { menu.value = false; if (await S.deleteParcela(props.id)) AP.router.go('parcelas'); };
       const archivar = () => { menu.value = false; S.toggleArchivo(props.id); };
-      return { st, p, e, prod, tab, menu, recs, labores, cosechas, monitoreos, carencia, fin, pasos, editar, eliminar, archivar, S, U, C };
+      const presu = computed(() => S.presupuesto.value.find((x) => x.parcela.id === props.id) || null);
+      return { st, p, e, prod, tab, menu, recs, labores, cosechas, monitoreos, carencia, fin, pasos, editar, eliminar, archivar, presu, B: AP.negocio, S, U, C };
     },
     template: `
     <div v-if="p && e">
-      <a href="#/parcelas" class="inline-flex items-center gap-2 text-sm font-semibold muted hover:text-ink-900 dark:hover:text-white mb-4"><i class="fa-solid fa-arrow-left"></i>Parcelas</a>
-
-      <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-6 animate-fade-up">
-        <div class="flex items-start gap-4 min-w-0">
-          <div class="w-14 h-14 rounded-2xl grid place-items-center text-white text-xl shrink-0 shadow-lift" :style="{ background: 'linear-gradient(135deg,' + p.color + ',' + p.color + 'aa)' }"><i class="fa-solid fa-layer-group"></i></div>
-          <div class="min-w-0">
-            <p class="eyebrow">{{ p.codigo ? p.codigo + ' · ' : '' }}{{ C.VARIEDADES[p.variedad].nombre }}</p>
-            <h1 class="h-title truncate">{{ p.nombre }}</h1>
-            <div class="flex flex-wrap gap-1.5 mt-2">
-              <ap-fase :fase="e.fase"></ap-fase>
-              <span class="chip bg-ink-100 text-ink-700 dark:bg-white/5 dark:text-ink-300">{{ e.etiquetaCiclo }}</span>
-              <span v-if="carencia" class="chip bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300"><i class="fa-solid fa-shield-halved"></i>Carencia hasta {{ U.fmtDate(carencia.hasta, 'short') }}</span>
-            </div>
-          </div>
-        </div>
-        <div class="flex gap-2 flex-wrap relative">
-          <button class="btn btn-outline" @click="editar"><i class="fa-solid fa-pen"></i>Editar</button>
-          <button class="btn btn-outline" @click="S.openForm('monitoreo', { parcelaId: p.id })"><i class="fa-solid fa-bug"></i><span class="hidden sm:inline">Monitoreo</span></button>
-          <button class="btn btn-outline" @click="S.openForm('cosecha', { parcelaId: p.id })"><i class="fa-solid fa-basket-shopping"></i><span class="hidden sm:inline">Cosecha</span></button>
-          <button class="btn btn-primary" @click="S.openForm('labor', { parcelaId: p.id })"><i class="fa-solid fa-plus"></i>Labor</button>
-          <div class="relative">
-            <button class="btn-icon border border-ink-200 dark:border-white/10" @click="menu = !menu" aria-label="Más opciones"><i class="fa-solid fa-ellipsis"></i></button>
-            <div v-if="menu" class="fixed inset-0 z-10" @click="menu = false"></div>
-            <div v-if="menu" class="absolute right-0 mt-2 w-52 card p-1.5 z-20 shadow-lift">
-              <a :href="'#/mapa?p=' + p.id" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm hover:bg-ink-100 dark:hover:bg-white/5"><i class="fa-solid fa-draw-polygon w-4 text-ink-400"></i>Dibujar en el mapa</a>
-              <button class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm hover:bg-ink-100 dark:hover:bg-white/5" @click="archivar"><i class="fa-solid fa-box-archive w-4 text-ink-400"></i>{{ p.estado === 'archivada' ? 'Reactivar' : 'Archivar' }}</button>
-              <button class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10" @click="eliminar"><i class="fa-solid fa-trash-can w-4"></i>Eliminar parcela</button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <ap-page-header :title="p.nombre" :crumbs="[{ label: 'Producción agrícola' }, { label: 'Parcelas', to: 'parcelas' }]" :subtitle="(p.codigo ? p.codigo + ' · ' : '') + C.VARIEDADES[p.variedad].nombre + ' · ' + e.etiquetaCiclo">
+        <template #lead><div class="w-11 h-11 rounded-lg grid place-items-center text-white text-lg shrink-0" :style="{ background: p.color }"><i class="fa-solid fa-layer-group"></i></div></template>
+        <template #status>
+          <ap-fase :fase="e.fase"></ap-fase>
+          <span v-if="p.estado === 'archivada'" class="st st-neutral">Archivada</span>
+          <span v-if="carencia" class="st st-err"><i class="fa-solid fa-shield-halved text-[9px]"></i>Carencia hasta {{ U.fmtDate(carencia.hasta, 'short') }}</span>
+        </template>
+        <button class="btn btn-outline" @click="editar"><i class="fa-solid fa-pen"></i>Editar</button>
+        <button class="btn btn-outline" @click="S.openForm('cosecha', { parcelaId: p.id })"><i class="fa-solid fa-basket-shopping"></i><span class="hidden sm:inline">Cosecha</span></button>
+        <button class="btn btn-primary" @click="S.openForm('labor', { parcelaId: p.id, estado: 'pendiente', fecha: U.addDays(st.hoy, 1) })"><i class="fa-solid fa-plus"></i>Orden de trabajo</button>
+        <ap-menu>
+          <template #trigger="{ toggle }"><button class="btn-icon border border-ink-300 dark:border-white/15" @click="toggle" aria-label="Más opciones"><i class="fa-solid fa-ellipsis"></i></button></template>
+          <button class="menu-item" @click="S.openForm('monitoreo', { parcelaId: p.id })"><i class="fa-solid fa-bug w-4 text-ink-400"></i>Registrar monitoreo</button>
+          <a :href="'#/mapa?p=' + p.id" class="menu-item"><i class="fa-solid fa-draw-polygon w-4 text-ink-400"></i>Dibujar en el mapa</a>
+          <button class="menu-item" @click="archivar"><i class="fa-solid fa-box-archive w-4 text-ink-400"></i>{{ p.estado === 'archivada' ? 'Reactivar' : 'Archivar' }}</button>
+          <div class="menu-sep"></div>
+          <button class="menu-item text-red-600" @click="eliminar"><i class="fa-solid fa-trash-can w-4"></i>Eliminar parcela</button>
+        </ap-menu>
+        <template #facets>
+          <ap-facet label="Siembra" :value="U.fmtDate(p.fechaSiembra)"></ap-facet>
+          <ap-facet label="Inicio del ciclo" :value="U.fmtDate(p.fechaInicioCiclo)"></ap-facet>
+          <ap-facet label="Inducción" :value="e.induccion ? U.fmtDate(e.induccion) : 'Pendiente (' + U.fmtDate(e.induccionEst, 'short') + ')'"></ap-facet>
+          <ap-facet label="Ventana de cosecha" :value="U.fmtDate(e.ventanaCosecha[0], 'short') + ' – ' + U.fmtDate(e.ventanaCosecha[1], 'short')"></ap-facet>
+          <ap-facet label="Presupuesto ejecutado" :value="presu && presu.ejecucion != null ? U.fmtPct(presu.ejecucion) : '—'" :st="presu && presu.estado === 'st-err' ? '!text-red-600' : presu && presu.estado === 'st-warn' ? '!text-amber-600' : ''"></ap-facet>
+        </template>
+      </ap-page-header>
 
       <!-- Línea de tiempo fenológica -->
       <div class="card p-4 sm:p-6 mb-4 overflow-x-auto no-scrollbar">
@@ -192,7 +221,7 @@
       </div>
 
       <div class="grid lg:grid-cols-3 gap-4">
-        <div class="lg:col-span-2 space-y-4">
+        <div class="lg:col-span-2 space-y-4 min-w-0">
           <div class="card">
             <div class="card-head"><h3 class="card-title"><i class="fa-solid fa-brain text-brand-600"></i>Recomendaciones agronómicas</h3></div>
             <div class="px-4 sm:px-5 pb-2 divide">
@@ -210,7 +239,7 @@
               <div v-for="l in labores" :key="l.id" class="row group">
                 <div :class="['icon-tile w-9 h-9 text-sm', C.labor(l.tipo).tone.soft]"><i :class="['fa-solid', C.labor(l.tipo).icon]"></i></div>
                 <div class="min-w-0 flex-1">
-                  <p class="text-sm font-semibold">{{ l.tipo }} <span v-if="l.estado === 'pendiente'" class="chip bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300 ml-1">Programada</span></p>
+                  <p class="text-sm font-semibold">{{ l.tipo }} <ap-status v-if="l.estado !== 'completada'" :st="B.ESTADOS_LABOR[l.estado].st" :label="B.ESTADOS_LABOR[l.estado].label" class="ml-1"></ap-status></p>
                   <p class="text-xs muted truncate">{{ U.fmtDate(l.fecha) }}<span v-if="l.descripcion"> · {{ l.descripcion }}</span></p>
                 </div>
                 <span class="text-sm font-semibold num shrink-0">{{ $money(l.costoTotal) }}</span>
@@ -244,7 +273,7 @@
           </div>
         </div>
 
-        <div class="space-y-4">
+        <div class="space-y-4 min-w-0">
           <div class="card p-3">
             <ap-mini-map v-if="p.poligono.length >= 3 || p.lat != null" :parcela="p" height="210px"></ap-mini-map>
             <a v-else :href="'#/mapa?p=' + p.id" class="flex flex-col items-center justify-center h-[210px] rounded-xl border-2 border-dashed border-ink-200 dark:border-white/10 text-center hover:border-brand-500 transition">
@@ -269,13 +298,26 @@
             </div>
           </div>
 
+          <div v-if="presu" class="card">
+            <div class="card-head"><h3 class="card-title"><i class="fa-solid fa-scale-balanced text-ink-400"></i>Presupuesto vs real</h3><ap-status :st="presu.estado" :label="({ 'st-ok': 'En control', 'st-warn': 'Atención', 'st-err': 'Sobregiro', 'st-neutral': 'Sin presupuesto' })[presu.estado]" dot></ap-status></div>
+            <div class="card-body space-y-3">
+              <div v-for="c in B.CATEGORIAS" :key="c.key">
+                <div class="flex justify-between text-[12.5px] mb-1"><span class="muted">{{ c.label }}</span><span class="num"><b>{{ $money(presu.real[c.key]) }}</b> <span class="muted">/ {{ $money(presu.presu[c.key]) }}</span></span></div>
+                <div class="bar relative"><span :class="presu.presu[c.key] && presu.real[c.key] > presu.presu[c.key] * presu.avance / 100 * 1.2 ? 'bg-red-500' : 'bg-brand-600'" :style="{ width: Math.min(100, presu.presu[c.key] ? presu.real[c.key] / presu.presu[c.key] * 100 : 0) + '%' }"></span></div>
+              </div>
+              <div class="flex justify-between text-[12.5px] pt-2 border-t border-ink-100 dark:border-white/[0.06]"><span class="muted">Esperado a la fecha ({{ U.fmtPct(presu.avance) }} del ciclo)</span><b class="num">{{ $money(presu.esperado) }}</b></div>
+              <div class="flex justify-between text-[12.5px]"><span class="muted">Desvío vs esperado</span><b :class="['num', presu.desvio > 20 ? 'text-red-600' : presu.desvio > 5 ? 'text-amber-600' : 'text-emerald-600']">{{ presu.desvio == null ? '—' : (presu.desvio > 0 ? '+' : '') + U.fmtNum(presu.desvio, 1) + '%' }}</b></div>
+              <button class="text-[12px] font-semibold text-brand-700 dark:text-brand-400 hover:underline" @click="editar">Ajustar presupuesto de la parcela</button>
+            </div>
+          </div>
+
           <div class="card p-4 sm:p-5">
-            <h3 class="card-title mb-4"><i class="fa-solid fa-clipboard-list text-sky-500"></i>Ficha técnica</h3>
+            <h3 class="card-title mb-4"><i class="fa-solid fa-clipboard-list text-ink-400"></i>Ficha técnica</h3>
             <dl class="grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
-              <div><dt class="text-[11px] muted">Siembra</dt><dd class="font-semibold">{{ U.fmtDate(p.fechaSiembra) }}</dd></div>
-              <div><dt class="text-[11px] muted">Inicio de ciclo</dt><dd class="font-semibold">{{ U.fmtDate(p.fechaInicioCiclo) }}</dd></div>
-              <div><dt class="text-[11px] muted">Inducción</dt><dd class="font-semibold">{{ e.induccion ? U.fmtDate(e.induccion) : 'Pendiente' }}</dd></div>
-              <div><dt class="text-[11px] muted">Ventana de cosecha</dt><dd class="font-semibold">{{ U.fmtDate(e.ventanaCosecha[0], 'short') }} – {{ U.fmtDate(e.ventanaCosecha[1], 'short') }}</dd></div>
+              <div><dt class="text-[11px] muted">Código</dt><dd class="font-semibold font-mono">{{ p.codigo || '—' }}</dd></div>
+              <div><dt class="text-[11px] muted">Variedad</dt><dd class="font-semibold">{{ C.VARIEDADES[p.variedad].nombre }}</dd></div>
+              <div><dt class="text-[11px] muted">Densidad de siembra</dt><dd class="font-semibold">{{ U.fmtNum(prod.densidad) }} plantas/ha</dd></div>
+              <div><dt class="text-[11px] muted">Ciclo</dt><dd class="font-semibold">{{ e.etiquetaCiclo }} (n.º {{ p.ciclo }})</dd></div>
               <div><dt class="text-[11px] muted">Peso medio fruta</dt><dd class="font-semibold">{{ U.fmtNum(prod.peso, 2) }} kg</dd></div>
               <div><dt class="text-[11px] muted">Aprovechamiento</dt><dd class="font-semibold">{{ U.fmtNum(prod.aprovechamiento) }}%</dd></div>
             </dl>

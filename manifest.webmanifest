@@ -1,21 +1,23 @@
 {
-  "name": "AgroPiña Pro · Gestión inteligente de piña",
-  "short_name": "AgroPiña Pro",
-  "description": "Gestión agronómica, clima, inventario y finanzas para fincas de piña. Funciona sin conexión.",
+  "name": "AgroPiña Enterprise · ERP agrícola para fincas de piña",
+  "short_name": "AgroPiña",
+  "description": "ERP agrícola para fincas de piña: multi-finca, órdenes de trabajo, planilla, compras, inventario, ventas y cobros, presupuesto, clima y reportes. Funciona sin conexión.",
   "lang": "es",
   "start_url": "./index.html#/dashboard",
   "scope": "./",
   "display": "standalone",
-  "orientation": "portrait-primary",
-  "background_color": "#0b0f0d",
-  "theme_color": "#05603a",
+  "orientation": "any",
+  "background_color": "#0f1b2b",
+  "theme_color": "#0f1b2b",
   "categories": ["productivity", "business", "utilities"],
   "icons": [
     { "src": "assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
     { "src": "assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "Registrar labor", "url": "./index.html#/labores" },
+    { "name": "Órdenes de trabajo", "url": "./index.html#/labores" },
+    { "name": "Registrar cosecha", "url": "./index.html#/cosechas" },
+    { "name": "Planilla", "url": "./index.html#/personal" },
     { "name": "Clima y riesgo", "url": "./index.html#/clima" }
   ]
 }

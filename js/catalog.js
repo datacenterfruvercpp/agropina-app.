@@ -1,4 +1,4 @@
-/* AgroPiña Pro · Catálogos agronómicos y de interfaz (piña tropical) */
+/* AgroPiña Enterprise · Catálogos agronómicos y de interfaz (piña tropical) */
 (function (AP) {
   'use strict';
 
@@ -107,6 +107,8 @@
     { label: 'Crítica', tone: tone('red') }
   ];
 
+  const TIPOS_CLIENTE = ['Exportadora', 'Mercado nacional', 'Industria', 'Otro'];
+  const PUESTOS = ['Peón agrícola', 'Aplicador', 'Cosechero', 'Operador de maquinaria', 'Mandador', 'Supervisor', 'Bodeguero', 'Administrativo'];
   const DESTINOS = { 'Exportación': tone('emerald'), 'Mercado nacional': tone('sky'), 'Industria': tone('amber'), 'Rechazo': tone('stone') };
   const MONEDAS = [
     { code: 'USD', label: 'Dólar (USD)' }, { code: 'CRC', label: 'Colón (CRC)' }, { code: 'EUR', label: 'Euro (EUR)' },
@@ -145,7 +147,7 @@
 
   AP.catalog = {
     HEX, tone, VARIEDADES, FASES, FASES_CICLO, LABORES, LABOR_ALIAS, CATEGORIAS_INSUMO, UNIDADES, PLAGAS, SEVERIDAD,
-    DESTINOS, MONEDAS, COLORES_PARCELA, NIVELES, KG_POR_CAJA, UBICACION_DEFECTO, wmo,
+    DESTINOS, TIPOS_CLIENTE, PUESTOS, MONEDAS, COLORES_PARCELA, NIVELES, KG_POR_CAJA, UBICACION_DEFECTO, wmo,
     labor: (t) => LABORES[t] || LABORES.Otro,
     plaga: (k) => PLAGAS.find((p) => p.key === k) || PLAGAS[PLAGAS.length - 1],
     categoria: (c) => CATEGORIAS_INSUMO[c] || CATEGORIAS_INSUMO.Otro,

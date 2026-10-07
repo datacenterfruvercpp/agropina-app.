@@ -1,14 +1,24 @@
-/* AgroPiña Pro · Service Worker: funcionamiento sin conexión (PWA) */
-const VERSION = 'agropina-v2.0.1';
+/* AgroPiña Enterprise · Service Worker: funcionamiento sin conexión (PWA) */
+const VERSION = 'agropina-v3.0.0';
 const SHELL = [
   './', './index.html', './manifest.webmanifest', './assets/icon.svg',
   './css/tailwind.css', './css/app.css',
   './vendor/vue.global.prod.js', './vendor/chart.umd.min.js', './vendor/xlsx.full.min.js', './vendor/leaflet/leaflet.js', './vendor/leaflet/leaflet.css',
   './vendor/fontawesome/css/all.min.css', './vendor/fontawesome/webfonts/fa-solid-900.woff2', './vendor/fontawesome/webfonts/fa-regular-400.woff2',
-  './vendor/fonts/fonts.css', './vendor/fonts/plus-jakarta-sans-latin.woff2',
-  './js/utils.js', './js/catalog.js', './js/agronomy.js', './js/weather.js', './js/store.js', './js/demo.js', './js/ui.js', './js/forms.js',
+  './vendor/fonts/fonts.css',
+  './vendor/fonts/ibm-plex-mono-latin-400-normal.woff2',
+  './vendor/fonts/ibm-plex-mono-latin-500-normal.woff2',
+  './vendor/fonts/ibm-plex-sans-latin-400-normal.woff2',
+  './vendor/fonts/ibm-plex-sans-latin-500-normal.woff2',
+  './vendor/fonts/ibm-plex-sans-latin-600-normal.woff2',
+  './vendor/fonts/ibm-plex-sans-latin-700-normal.woff2',
+  './vendor/fonts/ibm-plex-sans-latin-ext-400-normal.woff2',
+  './vendor/fonts/ibm-plex-sans-latin-ext-500-normal.woff2',
+  './vendor/fonts/ibm-plex-sans-latin-ext-600-normal.woff2',
+  './vendor/fonts/ibm-plex-sans-latin-ext-700-normal.woff2',
+  './js/utils.js', './js/catalog.js', './js/agronomy.js', './js/negocio.js', './js/weather.js', './js/store.js', './js/demo.js', './js/ui.js', './js/forms.js',
   './js/views/dashboard.js', './js/views/parcelas.js', './js/views/labores.js', './js/views/clima.js', './js/views/mapa.js',
-  './js/views/produccion.js', './js/views/finanzas.js', './js/app.js'
+  './js/views/produccion.js', './js/views/finanzas.js', './js/views/comercial.js', './js/views/personal.js', './js/views/reportes.js', './js/app.js'
 ];
 
 self.addEventListener('install', (e) => {

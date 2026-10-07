@@ -1,4 +1,4 @@
-/* AgroPiña Pro · Servicio de clima (Open-Meteo) con caché offline */
+/* AgroPiña Enterprise · Servicio de clima (Open-Meteo) con caché offline */
 (function (AP) {
   'use strict';
   const U = AP.utils;

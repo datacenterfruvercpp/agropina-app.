@@ -1,8 +1,8 @@
-/* AgroPiña Pro · Vistas: Cosechas, Sanidad vegetal e Inventario */
+/* AgroPiña Enterprise · Vistas: Cosechas, Sanidad vegetal e Inventario */
 (function (AP) {
   'use strict';
   const { ref, computed } = Vue;
-  const S = AP.store, U = AP.utils, C = AP.catalog;
+  const S = AP.store, U = AP.utils, C = AP.catalog, B = AP.negocio;
 
   AP.views = AP.views || {};
 
@@ -12,7 +12,7 @@
       const st = S.state;
       const periodo = ref('12m');
       const desde = computed(() => (periodo.value === '12m' ? U.addMonths(st.hoy, -11) : periodo.value === 'anio' ? st.hoy.slice(0, 4) + '-01-01' : '0000'));
-      const lista = computed(() => st.cosechas.filter((c) => c.fecha >= desde.value).sort((a, b) => (a.fecha < b.fecha ? 1 : -1)));
+      const lista = computed(() => st.cosechas.filter((c) => c.fecha >= desde.value));
       const kpi = computed(() => {
         const t = U.sum(lista.value, (c) => c.toneladas);
         const ing = U.sum(lista.value, (c) => c.toneladas * c.precio);
@@ -22,11 +22,31 @@
         return {
           t, ing, precio: t ? ing / t : 0, tHa: ha ? t / ha : 0,
           exportable: conExp.length ? U.sum(conExp, (c) => c.exportable * c.toneladas) / U.sum(conExp, (c) => c.toneladas) : null,
-          brix: conBrix.length ? U.sum(conBrix, (c) => c.brix) / conBrix.length : null
+          brix: conBrix.length ? U.sum(conBrix, (c) => c.brix) / conBrix.length : null,
+          porCobrar: U.sum(lista.value.filter((c) => c.estadoPago === 'pendiente'), (c) => c.toneladas * c.precio)
         };
       });
       const proximas = computed(() => S.activas.value.map((p) => ({ p, e: S.estados.value[p.id], prod: S.produccion.value[p.id] }))
         .filter((x) => x.e.diasParaCosecha <= 120 && x.e.fase !== 'planificada').sort((a, b) => a.e.diasParaCosecha - b.e.diasParaCosecha));
+      const pronosticoT = computed(() => U.sum(proximas.value, (x) => x.prod.toneladas));
+      const filas = computed(() => lista.value.map((c) => Object.assign({}, c, {
+        parcela: S.parcelaNombre(c.parcelaId), cliente: S.clienteNombre(c.clienteId, c.comprador), ingreso: U.round(c.toneladas * c.precio, 2)
+      })));
+      const cols = [
+        { key: 'fecha', label: 'Fecha', format: (v) => U.fmtDate(v) },
+        { key: 'parcela', label: 'Parcela', cls: 'font-semibold' },
+        { key: 'ciclo', label: 'Ciclo', align: 'right', hidden: true },
+        { key: 'toneladas', label: 'Toneladas', align: 'right', sum: true, format: (v) => U.fmtNum(v, 1) },
+        { key: 'cajas', label: 'Cajas', align: 'right', sum: true, format: (v) => (v ? U.fmtNum(v) : '—') },
+        { key: 'destino', label: 'Destino' },
+        { key: 'cliente', label: 'Cliente', format: (v) => v || '—' },
+        { key: 'factura', label: 'Factura', format: (v) => v || '—', hidden: true },
+        { key: 'exportable', label: 'Export.', align: 'right', format: (v) => (v != null ? v + '%' : '—') },
+        { key: 'brix', label: '°Brix', align: 'right', format: (v) => v || '—', hidden: true },
+        { key: 'precio', label: 'Precio/t', align: 'right', format: (v) => AP.money(v), hidden: true },
+        { key: 'ingreso', label: 'Ingreso', align: 'right', sum: true, format: (v) => AP.money(v) },
+        { key: 'estadoPago', label: 'Cobro', value: (r) => (r.estadoPago === 'pendiente' ? 'Por cobrar' : 'Cobrado') }
+      ];
       const chart = (t) => {
         const meses = [];
         for (let i = 11; i >= 0; i--) meses.push(U.monthKey(U.addMonths(st.hoy, -i)));
@@ -40,38 +60,44 @@
           options: AP.charts.options(t, { plugins: { legend: { display: true, position: 'bottom' } }, scales: { x: { stacked: true }, y: { stacked: true } } })
         };
       };
-      return { st, periodo, lista, kpi, proximas, chart, S, U, C };
+      return { st, periodo, lista, kpi, proximas, pronosticoT, filas, cols, chart, S, U, C };
     },
     template: `
     <div>
-      <ap-page-header eyebrow="Producción" title="Cosechas" subtitle="Pronóstico de cosecha, rendimiento real, calidad y comercialización.">
+      <ap-page-header eyebrow="Producción agrícola" title="Cosechas" subtitle="Pronóstico de cosecha, rendimiento real, calidad, destino y estado de cobro de cada pase.">
         <ap-seg v-model="periodo" :options="[{ value: '12m', label: '12 meses' }, { value: 'anio', label: 'Este año' }, { value: 'todo', label: 'Todo' }]"></ap-seg>
         <button class="btn btn-primary" @click="S.openForm('cosecha')"><i class="fa-solid fa-plus"></i>Registrar cosecha</button>
+        <template #facets>
+          <ap-facet label="Toneladas" :value="U.fmtNum(kpi.t, 1) + ' t'"></ap-facet>
+          <ap-facet label="Cajas equivalentes" :value="U.fmtCompact(kpi.t * 1000 / C.KG_POR_CAJA)"></ap-facet>
+          <ap-facet label="Ingresos" :value="$money(kpi.ing)"></ap-facet>
+          <ap-facet label="Por cobrar" :value="$money(kpi.porCobrar)" :st="kpi.porCobrar > 0 ? '!text-amber-600' : ''"></ap-facet>
+          <ap-facet label="Pronóstico 120 días" :value="U.fmtNum(pronosticoT) + ' t'"></ap-facet>
+        </template>
       </ap-page-header>
 
-      <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
-        <ap-stat label="Toneladas" :value="U.fmtNum(kpi.t, 1)" unit="t" icon="fa-weight-hanging" tone="amber" :sub="U.fmtCompact(kpi.t * 1000 / C.KG_POR_CAJA) + ' cajas eq.'"></ap-stat>
-        <ap-stat label="Ingresos" :value="$money(kpi.ing, true)" icon="fa-sack-dollar" tone="emerald"></ap-stat>
-        <ap-stat label="Precio medio" :value="$money(kpi.precio)" unit="/t" icon="fa-tag" tone="sky"></ap-stat>
-        <ap-stat label="Rendimiento" :value="U.fmtNum(kpi.tHa, 1)" unit="t/ha" icon="fa-chart-simple" tone="violet"></ap-stat>
-        <ap-stat label="Calidad" :value="kpi.exportable != null ? U.fmtPct(kpi.exportable) : '—'" icon="fa-award" tone="rose" :sub="kpi.brix ? 'exportable · ' + U.fmtNum(kpi.brix, 1) + ' °Brix' : 'exportable'"></ap-stat>
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        <ap-tile title="Precio medio" subtitle="Ingreso por tonelada" :value="$money(kpi.precio)" unit="/t" icon="fa-tag"></ap-tile>
+        <ap-tile title="Rendimiento" subtitle="Ciclos cosechados" :value="U.fmtNum(kpi.tHa, 1)" unit="t/ha" icon="fa-chart-simple"></ap-tile>
+        <ap-tile title="Calidad exportable" subtitle="Ponderada por toneladas" :value="kpi.exportable != null ? U.fmtPct(kpi.exportable) : '—'" icon="fa-award" :footer="kpi.brix ? 'Brix medio ' + U.fmtNum(kpi.brix, 1) + '°' : ''"></ap-tile>
+        <ap-tile title="Cuentas por cobrar" subtitle="De cosechas del período" :value="$money(kpi.porCobrar, true)" to="ventas" :status="kpi.porCobrar > 0 ? 'warn' : 'ok'" footer="Ver ventas y cobros"></ap-tile>
       </div>
 
       <div class="grid lg:grid-cols-5 gap-4 mb-4">
         <div class="card lg:col-span-3">
           <div class="card-head"><h3 class="card-title">Producción por mes y destino</h3><span class="text-xs muted">toneladas</span></div>
-          <div class="px-4 sm:px-5 pb-5"><ap-chart :config="chart" height="260px"></ap-chart></div>
+          <div class="card-body"><ap-chart :config="chart" height="260px"></ap-chart></div>
         </div>
         <div class="card lg:col-span-2">
-          <div class="card-head"><h3 class="card-title"><i class="fa-solid fa-binoculars text-gold-500"></i>Pronóstico · 120 días</h3></div>
-          <div class="divide">
+          <div class="card-head"><h3 class="card-title"><i class="fa-solid fa-binoculars text-ink-400"></i>Pronóstico · 120 días</h3><span class="text-xs muted num">{{ U.fmtNum(pronosticoT) }} t</span></div>
+          <div class="divide max-h-[300px] overflow-y-auto">
             <div v-for="x in proximas" :key="x.p.id" class="row">
               <span class="w-1.5 h-9 rounded-full" :style="{ background: x.p.color }"></span>
               <div class="min-w-0 flex-1">
                 <a :href="'#/parcelas/' + x.p.id" class="text-sm font-semibold hover:underline truncate block">{{ x.p.nombre }}</a>
                 <p class="text-[11px] muted">{{ U.fmtDate(x.e.ventanaCosecha[0], 'short') }} – {{ U.fmtDate(x.e.ventanaCosecha[1], 'short') }} · {{ U.fmtNum(x.prod.toneladas) }} t</p>
               </div>
-              <span :class="['chip', x.e.diasParaCosecha <= 0 ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300' : x.e.diasParaCosecha <= 30 ? 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300' : 'bg-ink-100 text-ink-600 dark:bg-white/5 dark:text-ink-300']">{{ x.e.diasParaCosecha <= 0 ? 'Ahora' : x.e.diasParaCosecha + ' d' }}</span>
+              <ap-status :st="x.e.diasParaCosecha <= 0 ? 'st-err' : x.e.diasParaCosecha <= 30 ? 'st-warn' : 'st-neutral'" :label="x.e.diasParaCosecha <= 0 ? 'Ahora' : x.e.diasParaCosecha + ' d'"></ap-status>
               <button class="btn-icon btn-icon-sm" @click="S.openForm('cosecha', { parcelaId: x.p.id })" title="Registrar cosecha"><i class="fa-solid fa-plus"></i></button>
             </div>
             <ap-empty v-if="!proximas.length" compact icon="fa-hourglass" title="Sin cosechas próximas"></ap-empty>
@@ -80,31 +106,17 @@
       </div>
 
       <div class="card overflow-hidden">
-        <div class="card-head"><h3 class="card-title">Registro de cosechas</h3><span class="text-xs muted">{{ lista.length }} registros</span></div>
-        <div v-if="lista.length" class="overflow-x-auto">
-          <table class="table">
-            <thead><tr><th>Fecha</th><th>Parcela</th><th class="!text-right">Toneladas</th><th class="!text-right">Cajas</th><th>Destino</th><th class="!text-right">Export.</th><th class="!text-right">°Brix</th><th class="!text-right">Ingreso</th><th></th></tr></thead>
-            <tbody>
-              <tr v-for="c in lista" :key="c.id" class="hover:bg-ink-50/70 dark:hover:bg-white/[0.02] group">
-                <td class="font-medium">{{ U.fmtDate(c.fecha) }}</td>
-                <td><a :href="'#/parcelas/' + c.parcelaId" class="font-semibold hover:underline">{{ S.parcelaNombre(c.parcelaId) }}</a><span v-if="c.cicloCerrado" class="chip bg-ink-100 text-ink-600 dark:bg-white/5 dark:text-ink-300 ml-2">Cierre</span></td>
-                <td class="text-right num font-semibold">{{ U.fmtNum(c.toneladas, 1) }}</td>
-                <td class="text-right num muted">{{ c.cajas ? U.fmtNum(c.cajas) : '—' }}</td>
-                <td><span :class="['chip', C.destino(c.destino).chip]">{{ c.destino }}</span></td>
-                <td class="text-right num">{{ c.exportable != null ? c.exportable + '%' : '—' }}</td>
-                <td class="text-right num">{{ c.brix || '—' }}</td>
-                <td class="text-right num font-bold text-brand-700 dark:text-brand-400">{{ $money(c.toneladas * c.precio) }}</td>
-                <td class="text-right">
-                  <button class="btn-icon btn-icon-sm" @click="S.openForm('cosecha', c)" aria-label="Editar"><i class="fa-solid fa-pen"></i></button>
-                  <button class="btn-icon btn-icon-sm hover:!text-red-600" @click="S.deleteCosecha(c.id)" aria-label="Eliminar"><i class="fa-solid fa-trash-can"></i></button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <ap-empty v-else icon="fa-basket-shopping" title="Sin cosechas en el período" text="Registre cada pase de cosecha para medir rendimiento real, calidad e ingresos.">
-          <button class="btn btn-primary" @click="S.openForm('cosecha')"><i class="fa-solid fa-plus"></i>Registrar cosecha</button>
-        </ap-empty>
+        <ap-data-table id="cosechas" title="Registro de cosechas" export-name="Cosechas" :columns="cols" :rows="filas" sort-key="fecha" sort-dir="desc" clickable @open="(r) => S.openForm('cosecha', st.cosechas.find((c) => c.id === r.id))"
+          :empty="{ icon: 'fa-basket-shopping', title: 'Sin cosechas en el período', text: 'Registre cada pase de cosecha para medir rendimiento real, calidad e ingresos.' }">
+          <template #cell-parcela="{ row }"><a :href="'#/parcelas/' + row.parcelaId" class="font-semibold hover:underline" @click.stop>{{ row.parcela }}</a><span v-if="row.cicloCerrado" class="st st-neutral ml-2">Cierre</span></template>
+          <template #cell-destino="{ row }"><span :class="['chip', C.destino(row.destino).chip]">{{ row.destino }}</span></template>
+          <template #cell-ingreso="{ row }"><span class="font-semibold">{{ $money(row.ingreso) }}</span></template>
+          <template #cell-estadoPago="{ row }"><ap-status :st="row.estadoPago === 'pendiente' ? 'st-warn' : 'st-ok'" :label="row.estadoPago === 'pendiente' ? 'Por cobrar' : 'Cobrado'" dot></ap-status></template>
+          <template #rowActions="{ row }">
+            <button v-if="row.estadoPago === 'pendiente'" class="btn-icon btn-icon-sm text-brand-700 dark:text-brand-400" @click="S.registrarCobro(row.id)" title="Registrar cobro" aria-label="Registrar cobro"><i class="fa-solid fa-hand-holding-dollar"></i></button>
+            <button class="btn-icon btn-icon-sm hover:!text-red-600" @click="S.deleteCosecha(row.id)" aria-label="Eliminar"><i class="fa-solid fa-trash-can"></i></button>
+          </template>
+        </ap-data-table>
       </div>
     </div>`
   };
@@ -147,15 +159,15 @@
     },
     template: `
     <div>
-      <ap-page-header eyebrow="Producción" title="Sanidad vegetal" subtitle="Monitoreo de plagas y enfermedades, mapa de presión y seguimiento de tratamientos.">
+      <ap-page-header eyebrow="Producción agrícola" title="Sanidad vegetal" subtitle="Monitoreo de plagas y enfermedades, mapa de presión y seguimiento de tratamientos.">
         <button class="btn btn-primary" @click="S.openForm('monitoreo')"><i class="fa-solid fa-plus"></i>Nuevo monitoreo</button>
       </ap-page-header>
 
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-        <ap-stat label="Monitoreos 30 días" :value="ultimos30.length" icon="fa-magnifying-glass" tone="violet"></ap-stat>
-        <ap-stat label="Incidencia media" :value="incidencia != null ? U.fmtPct(incidencia, 1) : '—'" icon="fa-percent" tone="amber" sub="últimos 30 días"></ap-stat>
-        <ap-stat label="Focos críticos" :value="altas" icon="fa-bug" :tone="altas ? 'red' : 'emerald'" sub="severidad ≥ 4 (último registro)"></ap-stat>
-        <ap-stat label="Sin monitoreo" :value="sinMonitoreo.length" icon="fa-eye-slash" tone="sky" :sub="sinMonitoreo.length ? sinMonitoreo.map(p => p.nombre).slice(0, 2).join(', ') : 'Todas al día'"></ap-stat>
+        <ap-tile title="Monitoreos" subtitle="Últimos 30 días" :value="ultimos30.length" icon="fa-magnifying-glass"></ap-tile>
+        <ap-tile title="Incidencia media" subtitle="Últimos 30 días" :value="incidencia != null ? U.fmtPct(incidencia, 1) : '—'" icon="fa-percent"></ap-tile>
+        <ap-tile title="Focos críticos" subtitle="Severidad ≥ 4 en el último registro" :value="altas" :status="altas ? 'err' : 'ok'"></ap-tile>
+        <ap-tile title="Sin monitoreo" subtitle="Más de 21 días" :value="sinMonitoreo.length" :status="sinMonitoreo.length ? 'warn' : 'ok'" :footer="sinMonitoreo.length ? sinMonitoreo.map(p => p.nombre).slice(0, 2).join(', ') : 'Todas al día'"></ap-tile>
       </div>
 
       <div v-if="plagasVistas.length" class="grid lg:grid-cols-5 gap-4 mb-4">
@@ -217,93 +229,133 @@
 
   /* ------------------------------ Inventario ------------------------------ */
   AP.views.inventario = {
-    setup() {
+    props: { query: Object },
+    setup(props) {
       const st = S.state;
-      const q = ref('');
+      const tab = ref(props.query && props.query.tab === 'movimientos' ? 'movimientos' : 'existencias');
       const cat = ref('');
-      const lista = computed(() => st.insumos.filter((i) => (!cat.value || i.categoria === cat.value) && U.match(q.value, i.nombre, i.ingredienteActivo, i.proveedor))
-        .sort((a, b) => a.nombre.localeCompare(b.nombre)));
+      const sel = ref(props.query && props.query.i ? props.query.i : '');
       const categorias = computed(() => [...new Set(st.insumos.map((i) => i.categoria))]);
-      const movs = computed(() => st.movimientos.slice().sort((a, b) => (a.fecha < b.fecha ? 1 : a.fecha > b.fecha ? -1 : 0)).slice(0, 12));
       const consumo30 = computed(() => U.sum(st.movimientos.filter((m) => m.tipo === 'salida' && U.diffDays(st.hoy, m.fecha) <= 30), (m) => m.cantidad * m.costoUnitario));
       const nivel = (i) => {
         const ref_ = Math.max(i.stockMinimo * 2, i.stock, 1);
         return { pct: U.clamp((i.stock / ref_) * 100, 0, 100), bajo: i.stock <= 0 || (i.stockMinimo > 0 && i.stock <= i.stockMinimo) };
       };
-      return { st, q, cat, lista, categorias, movs, consumo30, nivel, S, U, C };
+      const enCamino = computed(() => {
+        const o = {};
+        st.ordenes.filter((x) => x.estado === 'aprobada').forEach((x) => x.lineas.forEach((l) => { o[l.insumoId] = (o[l.insumoId] || 0) + (Number(l.cantidad) || 0); }));
+        return o;
+      });
+      const filas = computed(() => st.insumos.filter((i) => !cat.value || i.categoria === cat.value).map((i) => Object.assign({}, i, {
+        proveedorN: i.proveedorId ? S.proveedorNombre(i.proveedorId) : (i.proveedor || ''), valor: U.round(Math.max(0, i.stock) * i.costoUnitario, 2),
+        bajo: nivel(i).bajo, pct: nivel(i).pct, enCamino: enCamino.value[i.id] || 0
+      })));
+      const cols = [
+        { key: 'nombre', label: 'Insumo', cls: 'font-semibold' },
+        { key: 'categoria', label: 'Categoría' },
+        { key: 'ingredienteActivo', label: 'Ingrediente activo', format: (v) => v || '—', hidden: true },
+        { key: 'proveedorN', label: 'Proveedor', format: (v) => v || '—' },
+        { key: 'stock', label: 'Existencia', align: 'right', format: (v) => U.fmtNum(v, 2) },
+        { key: 'unidad', label: 'Unidad' },
+        { key: 'stockMinimo', label: 'Mínimo', align: 'right', format: (v) => U.fmtNum(v, 1) },
+        { key: 'enCamino', label: 'En camino', align: 'right', format: (v) => (v ? U.fmtNum(v, 2) : '—') },
+        { key: 'costoUnitario', label: 'Costo prom.', align: 'right', format: (v) => AP.money(v) },
+        { key: 'valor', label: 'Valor', align: 'right', sum: true, format: (v) => AP.money(v) },
+        { key: 'carencia', label: 'Carencia', align: 'right', format: (v) => (v ? v + ' d' : '—'), hidden: true },
+        { key: 'bajo', label: 'Estado', value: (r) => (r.bajo ? 'Reponer' : 'Abastecido'), sortValue: (r) => (r.bajo ? 0 : 1) }
+      ];
+      const movs = computed(() => {
+        const ins = sel.value ? st.insumos.filter((i) => i.id === sel.value) : st.insumos;
+        const out = [];
+        const refLabel = (r) => {
+          if (!r) return '';
+          const o = st.ordenes.find((x) => x.id === r); if (o) return o.numero;
+          return st.labores.some((x) => x.id === r) ? 'Orden de trabajo' : r;
+        };
+        ins.forEach((i) => B.kardex(st.movimientos, i.id).forEach((m) => out.push(Object.assign({}, m, { insumo: i.nombre, unidad: i.unidad, ref: refLabel(m.referencia), valor: U.round(m.delta * m.costoUnitario, 2) }))));
+        return out;
+      });
+      const colsMov = [
+        { key: 'fecha', label: 'Fecha', format: (v) => U.fmtDate(v) },
+        { key: 'insumo', label: 'Insumo', cls: 'font-semibold' },
+        { key: 'tipo', label: 'Tipo', value: (r) => ({ entrada: 'Entrada', salida: 'Salida', ajuste: 'Ajuste' })[r.tipo] },
+        { key: 'ref', label: 'Referencia', format: (v) => v || '—' },
+        { key: 'nota', label: 'Detalle', format: (v) => v || '—' },
+        { key: 'delta', label: 'Cantidad', align: 'right', format: (v) => (v > 0 ? '+' : '') + U.fmtNum(v, 2) },
+        { key: 'saldo', label: 'Saldo', align: 'right', format: (v) => U.fmtNum(v, 2) },
+        { key: 'costoUnitario', label: 'Costo unit.', align: 'right', format: (v) => AP.money(v) },
+        { key: 'valor', label: 'Valor', align: 'right', sum: true, format: (v) => AP.money(v) }
+      ];
+      const pedir = (rows, clear) => {
+        const lista = rows.filter((r) => r.id);
+        if (!lista.length) return;
+        const prov = lista[0].proveedorId && lista.every((r) => r.proveedorId === lista[0].proveedorId) ? lista[0].proveedorId : '';
+        S.openForm('orden', { proveedorId: prov, lineas: lista.map((i) => ({ insumoId: i.id, cantidad: U.round(Math.max(i.stockMinimo * 2 - i.stock, i.stockMinimo || 1), 2), costoUnitario: i.costoUnitario })) });
+        if (clear) clear();
+      };
+      const verKardex = (id) => { sel.value = id; tab.value = 'movimientos'; };
+      return { st, tab, cat, sel, categorias, consumo30, filas, cols, movs, colsMov, pedir, verKardex, S, U, C };
     },
     template: `
     <div>
-      <ap-page-header eyebrow="Producción" title="Inventario de insumos" subtitle="Stock en tiempo real descontado por las labores, costo promedio y períodos de carencia.">
+      <ap-page-header eyebrow="Cadena de suministro" title="Inventario de insumos" subtitle="Existencias en tiempo real descontadas por las labores, costo promedio ponderado, kardex y reposición.">
         <button class="btn btn-outline" @click="S.openForm('movimiento')" :disabled="!st.insumos.length"><i class="fa-solid fa-right-left"></i>Movimiento</button>
         <button class="btn btn-primary" @click="S.openForm('insumo')"><i class="fa-solid fa-plus"></i>Nuevo insumo</button>
+        <template #facets>
+          <ap-facet label="Valor en bodega" :value="$money(S.resumen.value.valorInventario)"></ap-facet>
+          <ap-facet label="Productos" :value="st.insumos.length + ' en ' + categorias.length + ' categorías'"></ap-facet>
+          <ap-facet label="Bajo mínimo" :value="S.stockBajo.value.length" :st="S.stockBajo.value.length ? '!text-amber-600' : ''"></ap-facet>
+          <ap-facet label="Consumo 30 días" :value="$money(consumo30)"></ap-facet>
+          <ap-facet label="Compras en curso" :value="$money(S.resumen.value.comprasAbiertas || 0)"></ap-facet>
+        </template>
+        <template #tabs>
+          <ap-tab :active="tab === 'existencias'" :count="st.insumos.length" @click="tab = 'existencias'">Existencias</ap-tab>
+          <ap-tab :active="tab === 'movimientos'" @click="tab = 'movimientos'">Kardex y movimientos</ap-tab>
+        </template>
       </ap-page-header>
 
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-        <ap-stat label="Valor en bodega" :value="$money(S.resumen.value.valorInventario, true)" icon="fa-warehouse" tone="violet"></ap-stat>
-        <ap-stat label="Productos" :value="st.insumos.length" icon="fa-boxes-stacked" tone="sky" :sub="categorias.length + ' categorías'"></ap-stat>
-        <ap-stat label="Stock bajo" :value="S.stockBajo.value.length" icon="fa-triangle-exclamation" :tone="S.stockBajo.value.length ? 'amber' : 'emerald'" :sub="S.stockBajo.value.length ? S.stockBajo.value.map(i => i.nombre).slice(0, 2).join(', ') : 'Todo abastecido'"></ap-stat>
-        <ap-stat label="Consumo 30 días" :value="$money(consumo30, true)" icon="fa-arrow-trend-down" tone="orange"></ap-stat>
+      <div v-if="tab === 'existencias'" class="space-y-4">
+        <div v-if="S.stockBajo.value.length" class="strip st-warn"><i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
+          <span class="flex-1">{{ S.stockBajo.value.length }} insumo(s) en o bajo el stock mínimo: {{ S.stockBajo.value.map((i) => i.nombre).slice(0, 4).join(', ') }}<span v-if="S.stockBajo.value.length > 4">…</span></span>
+          <button class="btn btn-outline btn-sm shrink-0" @click="S.openForm('orden', { lineas: S.stockBajo.value.map((i) => ({ insumoId: i.id, cantidad: U.round(Math.max(i.stockMinimo * 2 - i.stock, i.stockMinimo || 1), 2), costoUnitario: i.costoUnitario })) })"><i class="fa-solid fa-cart-plus"></i>Generar orden de compra</button>
+        </div>
+        <div class="card overflow-hidden">
+          <ap-data-table id="insumos" title="Existencias" export-name="Inventario" :columns="cols" :rows="filas" sort-key="nombre" selectable clickable @open="(r) => S.openForm('insumo', st.insumos.find((i) => i.id === r.id))"
+            :empty="{ icon: 'fa-boxes-stacked', title: st.insumos.length ? 'Sin resultados' : 'Inventario vacío', text: 'Registre fertilizantes, agroquímicos e inductores para controlar stock, costos y carencias.' }">
+            <template #toolbar>
+              <select v-model="cat" class="input h-8 text-[12.5px] w-auto"><option value="">Todas las categorías</option><option v-for="c in categorias" :key="c" :value="c">{{ c }}</option></select>
+            </template>
+            <template #bulk="{ rows, clear }"><button class="btn btn-outline btn-sm" @click="pedir(rows, clear)"><i class="fa-solid fa-cart-plus"></i>Crear orden de compra</button></template>
+            <template #cell-nombre="{ row }"><span class="font-semibold">{{ row.nombre }}</span><span v-if="row.carencia" class="st st-warn ml-2" title="Período de carencia"><i class="fa-solid fa-shield-halved text-[9px]"></i>{{ row.carencia }} d</span></template>
+            <template #cell-categoria="{ row }"><span class="inline-flex items-center gap-1.5"><span :class="['w-2 h-2 rounded-full', C.categoria(row.categoria).dot]"></span>{{ row.categoria }}</span></template>
+            <template #cell-stock="{ row }">
+              <div class="flex items-center justify-end gap-2"><div class="bar w-14 hidden sm:block"><span :class="row.bajo ? 'bg-red-500' : 'bg-brand-600'" :style="{ width: row.pct + '%' }"></span></div><span :class="['num font-semibold', row.bajo ? 'text-red-600' : '']">{{ U.fmtNum(row.stock, 2) }}</span></div>
+            </template>
+            <template #cell-bajo="{ row }"><ap-status :st="row.bajo ? (row.enCamino ? 'st-info' : 'st-err') : 'st-ok'" :label="row.bajo ? (row.enCamino ? 'En camino' : 'Reponer') : 'Abastecido'" dot></ap-status></template>
+            <template #rowActions="{ row }">
+              <button class="btn-icon btn-icon-sm text-brand-600" @click="S.openForm('movimiento', { insumoId: row.id })" title="Entrada / ajuste"><i class="fa-solid fa-plus-minus"></i></button>
+              <ap-menu>
+                <template #trigger="{ toggle }"><button class="btn-icon btn-icon-sm" @click="toggle" aria-label="Más acciones"><i class="fa-solid fa-ellipsis-vertical"></i></button></template>
+                <button class="menu-item" @click="verKardex(row.id)"><i class="fa-solid fa-list-ol w-4 text-ink-400"></i>Ver kardex</button>
+                <button class="menu-item" @click="pedir([row])"><i class="fa-solid fa-cart-plus w-4 text-ink-400"></i>Crear orden de compra</button>
+                <button class="menu-item" @click="S.openForm('insumo', st.insumos.find((i) => i.id === row.id))"><i class="fa-solid fa-pen w-4 text-ink-400"></i>Editar</button>
+                <div class="menu-sep"></div>
+                <button class="menu-item text-red-600" @click="S.deleteInsumo(row.id)"><i class="fa-solid fa-trash-can w-4"></i>Eliminar</button>
+              </ap-menu>
+            </template>
+          </ap-data-table>
+        </div>
       </div>
 
-      <div class="flex flex-col sm:flex-row gap-3 mb-4">
-        <div class="relative sm:w-72">
-          <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400 text-sm"></i>
-          <input v-model="q" class="input pl-10" placeholder="Buscar producto, ingrediente…">
-        </div>
-        <div class="flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">
-          <button :class="['filter-chip', !cat ? 'filter-chip-on' : '']" @click="cat = ''">Todas</button>
-          <button v-for="c in categorias" :key="c" :class="['filter-chip', cat === c ? 'filter-chip-on' : '']" @click="cat = c"><span :class="['w-2 h-2 rounded-full', C.categoria(c).dot]"></span>{{ c }}</button>
-        </div>
-      </div>
-
-      <div class="grid xl:grid-cols-3 gap-4">
-        <div class="xl:col-span-2 card overflow-hidden">
-          <div v-if="lista.length" class="divide">
-            <div v-for="i in lista" :key="i.id" class="row group">
-              <div :class="['icon-tile', C.categoria(i.categoria).soft]"><i class="fa-solid fa-flask"></i></div>
-              <div class="min-w-0 flex-1">
-                <div class="flex flex-wrap items-center gap-2">
-                  <p class="font-semibold text-sm">{{ i.nombre }}</p>
-                  <span :class="['chip', C.categoria(i.categoria).chip]">{{ i.categoria }}</span>
-                  <span v-if="i.carencia" class="chip bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300"><i class="fa-solid fa-shield-halved"></i>{{ i.carencia }} d</span>
-                </div>
-                <p class="text-[11px] muted mt-0.5 truncate">{{ i.ingredienteActivo || '—' }}<span v-if="i.proveedor"> · {{ i.proveedor }}</span> · {{ $money(i.costoUnitario) }}/{{ i.unidad }}</p>
-                <div class="flex items-center gap-2 mt-2 max-w-xs">
-                  <div class="bar flex-1"><span :class="nivel(i).bajo ? 'bg-red-500' : 'bg-brand-500'" :style="{ width: nivel(i).pct + '%' }"></span></div>
-                </div>
-              </div>
-              <div class="text-right shrink-0">
-                <p :class="['font-extrabold num', nivel(i).bajo ? 'text-red-600' : '']">{{ U.fmtNum(i.stock, 2) }} <span class="text-xs font-semibold muted">{{ i.unidad }}</span></p>
-                <p class="text-[11px] muted">mín. {{ U.fmtNum(i.stockMinimo, 1) }} · {{ $money(Math.max(0, i.stock) * i.costoUnitario) }}</p>
-                <div class="flex justify-end gap-0.5 mt-1 opacity-70 group-hover:opacity-100">
-                  <button class="btn-icon btn-icon-sm text-brand-600" @click="S.openForm('movimiento', { insumoId: i.id })" title="Entrada / ajuste"><i class="fa-solid fa-plus-minus"></i></button>
-                  <button class="btn-icon btn-icon-sm" @click="S.openForm('insumo', i)" aria-label="Editar"><i class="fa-solid fa-pen"></i></button>
-                  <button class="btn-icon btn-icon-sm hover:!text-red-600" @click="S.deleteInsumo(i.id)" aria-label="Eliminar"><i class="fa-solid fa-trash-can"></i></button>
-                </div>
-              </div>
-            </div>
-          </div>
-          <ap-empty v-else icon="fa-boxes-stacked" :title="st.insumos.length ? 'Sin resultados' : 'Inventario vacío'" text="Registre fertilizantes, agroquímicos e inductores para controlar stock, costos y carencias.">
-            <button class="btn btn-primary" @click="S.openForm('insumo')"><i class="fa-solid fa-plus"></i>Nuevo insumo</button>
-          </ap-empty>
-        </div>
-        <div class="card self-start">
-          <div class="card-head"><h3 class="card-title"><i class="fa-solid fa-clock-rotate-left text-sky-500"></i>Movimientos recientes</h3></div>
-          <div class="divide">
-            <div v-for="m in movs" :key="m.id" class="row">
-              <div :class="['w-8 h-8 rounded-lg grid place-items-center text-xs shrink-0', m.tipo === 'entrada' ? 'bg-brand-50 text-brand-600 dark:bg-brand-500/10' : m.tipo === 'salida' ? 'bg-orange-50 text-orange-600 dark:bg-orange-500/10' : 'bg-sky-50 text-sky-600 dark:bg-sky-500/10']">
-                <i :class="['fa-solid', m.tipo === 'entrada' ? 'fa-arrow-down' : m.tipo === 'salida' ? 'fa-arrow-up' : 'fa-scale-balanced']"></i>
-              </div>
-              <div class="min-w-0 flex-1">
-                <p class="text-sm font-semibold truncate">{{ S.insumo(m.insumoId) ? S.insumo(m.insumoId).nombre : 'Insumo' }}</p>
-                <p class="text-[11px] muted truncate">{{ U.fmtDate(m.fecha, 'short') }} · {{ m.nota }}</p>
-              </div>
-              <span :class="['text-sm font-bold num shrink-0', m.tipo === 'salida' || m.cantidad < 0 ? 'text-orange-600' : 'text-brand-600']">{{ m.tipo === 'salida' ? '−' + U.fmtNum(m.cantidad, 2) : (m.cantidad >= 0 ? '+' : '') + U.fmtNum(m.cantidad, 2) }}</span>
-            </div>
-            <ap-empty v-if="!movs.length" compact icon="fa-right-left" title="Sin movimientos"></ap-empty>
-          </div>
-        </div>
+      <div v-else class="card overflow-hidden">
+        <ap-data-table :key="'kx' + sel" id="kardex" :title="sel ? 'Kardex' : 'Movimientos'" :export-name="'Kardex' + (sel && S.insumo(sel) ? '_' + S.insumo(sel).nombre : '')" :columns="colsMov" :rows="movs" sort-key="fecha" sort-dir="desc"
+          :empty="{ icon: 'fa-right-left', title: 'Sin movimientos', text: 'Las entradas, consumos de labores y ajustes aparecerán aquí.' }">
+          <template #toolbar>
+            <select v-model="sel" class="input h-8 text-[12.5px] w-auto max-w-[220px]"><option value="">Todos los insumos</option><option v-for="i in st.insumos" :key="i.id" :value="i.id">{{ i.nombre }}</option></select>
+          </template>
+          <template #cell-tipo="{ row }"><ap-status :st="row.tipo === 'entrada' ? 'st-ok' : row.tipo === 'salida' ? 'st-warn' : 'st-info'" :label="({ entrada: 'Entrada', salida: 'Salida', ajuste: 'Ajuste' })[row.tipo]" :icon="row.tipo === 'entrada' ? 'fa-arrow-down' : row.tipo === 'salida' ? 'fa-arrow-up' : 'fa-scale-balanced'"></ap-status></template>
+          <template #cell-delta="{ row }"><span :class="['num font-semibold', row.delta < 0 ? 'text-orange-600' : 'text-emerald-700 dark:text-emerald-400']">{{ (row.delta > 0 ? '+' : '') + U.fmtNum(row.delta, 2) }}</span> <span class="text-[11px] muted">{{ row.unidad }}</span></template>
+        </ap-data-table>
       </div>
     </div>`
   };

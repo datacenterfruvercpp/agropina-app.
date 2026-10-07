@@ -3,23 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>AgroPiña Pro · Gestión inteligente de piña</title>
-  <meta name="description" content="Plataforma de gestión para fincas de piña: fenología, proyección de cosechas, clima y ventanas de aplicación, inventario, sanidad y rentabilidad. Funciona sin conexión.">
-  <meta name="theme-color" content="#05603a">
+  <title>AgroPiña Enterprise · ERP agrícola para fincas de piña</title>
+  <meta name="description" content="ERP agrícola para fincas de piña: multi-finca, órdenes de trabajo, planilla, compras, inventario con kardex, ventas y cuentas por cobrar, presupuesto vs real, clima, sanidad y reportes. Funciona sin conexión.">
+  <meta name="theme-color" content="#0f1b2b">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="AgroPiña Pro">
+  <meta name="apple-mobile-web-app-title" content="AgroPiña">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="assets/icon.svg">
 
-  <!-- Tema antes del primer pintado (evita parpadeo) -->
+  <!-- Tema y densidad antes del primer pintado (evita parpadeo) -->
   <script>
     try {
-      var s = (JSON.parse(localStorage.getItem('agropina_v2') || '{}').settings) || {};
-      var t = s.tema || (localStorage.getItem('agropina_theme') === 'dark' ? 'dark' : 'system');
+      var d3 = JSON.parse(localStorage.getItem('agropina_v3') || 'null');
+      var pr = (d3 && d3.prefs) || {};
+      var t = pr.tema || ((JSON.parse(localStorage.getItem('agropina_v2') || '{}').settings || {}).tema) || 'system';
       if (t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.classList.add('dark');
+      if (pr.densidad === 'compacta') document.documentElement.classList.add('compact');
     } catch (e) {}
   </script>
 
@@ -31,9 +33,9 @@
 </head>
 <body>
   <div id="app">
-    <div class="ap-splash"><div><img src="assets/icon.svg" alt="AgroPiña Pro"><p>AgroPiña Pro</p></div></div>
+    <div class="ap-splash"><div><img src="assets/icon.svg" alt="AgroPiña"><p>AgroPiña Enterprise</p></div></div>
   </div>
-  <noscript><p style="padding:24px;font-family:sans-serif">AgroPiña Pro necesita JavaScript habilitado.</p></noscript>
+  <noscript><p style="padding:24px;font-family:sans-serif">AgroPiña necesita JavaScript habilitado.</p></noscript>
 
   <!-- Librerías locales (sin CDN: funcionan sin conexión) -->
   <script src="vendor/vue.global.prod.js"></script>
@@ -44,6 +46,7 @@
   <script src="js/utils.js"></script>
   <script src="js/catalog.js"></script>
   <script src="js/agronomy.js"></script>
+  <script src="js/negocio.js"></script>
   <script src="js/weather.js"></script>
   <script src="js/store.js"></script>
   <script src="js/demo.js"></script>
@@ -58,6 +61,9 @@
   <script src="js/views/mapa.js"></script>
   <script src="js/views/produccion.js"></script>
   <script src="js/views/finanzas.js"></script>
+  <script src="js/views/comercial.js"></script>
+  <script src="js/views/personal.js"></script>
+  <script src="js/views/reportes.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
