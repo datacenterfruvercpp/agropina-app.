@@ -1,0 +1,66 @@
+/* AgroPiña Pro · Estilos complementarios (no Tailwind) */
+html { scroll-behavior: smooth; }
+body { min-height: 100dvh; }
+[v-cloak] { display: none; }
+
+/* Pantalla de carga */
+.ap-splash { position: fixed; inset: 0; display: grid; place-items: center; background: #0f1b2b; z-index: 100; }
+.ap-splash img { width: 72px; height: 72px; border-radius: 20px; box-shadow: 0 20px 50px -12px rgba(18,183,106,.55); animation: ap-pulse 1.6s ease-in-out infinite; }
+.ap-splash p { margin-top: 18px; color: #8f9aa8; font: 600 13px/1 "IBM Plex Sans", system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; text-align: center; }
+@keyframes ap-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+
+/* Transiciones de toasts */
+.toast-enter-active, .toast-leave-active { transition: all .3s cubic-bezier(.2,.7,.2,1); }
+.toast-enter-from { opacity: 0; transform: translateY(16px) scale(.96); }
+.toast-leave-to { opacity: 0; transform: translateY(8px) scale(.96); }
+
+/* Densidad de tablas (preferencia del usuario: cómoda / compacta) */
+:root { --dt-h: 44px; }
+html.compact { --dt-h: 34px; }
+.dt tbody td { height: var(--dt-h); }
+html.compact .row { padding-top: .375rem; padding-bottom: .375rem; }
+
+/* Menús y paneles emergentes */
+.pop-enter-active, .pop-leave-active { transition: opacity .12s ease, transform .12s ease; }
+.pop-enter-from, .pop-leave-to { opacity: 0; transform: translateY(-4px); }
+.fade-enter-active, .fade-leave-active { transition: opacity .15s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+
+/* Barra de navegación lateral plegable */
+.sidenav { transition: width .18s ease; }
+.content-shift { transition: padding-left .18s ease; }
+
+/* Barras de desplazamiento */
+* { scrollbar-width: thin; scrollbar-color: rgba(100,112,106,.35) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: rgba(100,112,106,.3); border-radius: 10px; border: 3px solid transparent; background-clip: content-box; }
+
+/* Inputs de fecha y número */
+input[type="date"]::-webkit-calendar-picker-indicator { opacity: .55; cursor: pointer; }
+.dark input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); }
+input[type="number"]::-webkit-inner-spin-button { opacity: .4; }
+.dark select.input option, .dark select.input optgroup { background: #1c242f; }
+
+/* Leaflet */
+.leaflet-container { font-family: "IBM Plex Sans", system-ui, sans-serif; background: #1c242f; }
+.leaflet-popup-content-wrapper { border-radius: 14px; box-shadow: 0 18px 40px -16px rgba(0,0,0,.35); }
+.leaflet-popup-content { margin: 12px 14px; }
+.leaflet-tooltip.ap-map-label { background: rgba(11,15,13,.72); color: #fff; border: 0; border-radius: 8px; box-shadow: none; font-weight: 700; font-size: 11px; padding: 3px 8px; }
+.leaflet-tooltip.ap-map-label::before { display: none; }
+.leaflet-control-zoom a { border-radius: 10px !important; margin-bottom: 4px; border: 0 !important; box-shadow: 0 4px 14px -4px rgba(0,0,0,.3); }
+.leaflet-control-zoom { border: 0 !important; }
+.leaflet-container a.leaflet-popup-close-button { top: 6px; right: 6px; }
+
+/* Impresión de reportes */
+@media print {
+  @page { margin: 14mm; }
+  body { background: #fff !important; color: #000 !important; }
+  aside, nav, header, .btn, .btn-icon, .seg, .print\:hidden { display: none !important; }
+  .lg\:pl-\[264px\] { padding-left: 0 !important; }
+  main { padding: 0 !important; max-width: none !important; }
+  .card { box-shadow: none !important; border-color: #ddd !important; break-inside: avoid; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}

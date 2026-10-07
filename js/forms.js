@@ -1,0 +1,776 @@
+/* AgroPiña Enterprise · Formularios (se abren con AP.store.openForm(tipo, datos)) */
+(function (AP) {
+  'use strict';
+  const { reactive, computed, ref, watch } = Vue;
+  const S = AP.store, C = AP.catalog, U = AP.utils, A = AP.agro;
+
+  const req = (v) => v !== '' && v != null && !(typeof v === 'number' && isNaN(v));
+  const parcelasOpts = () => S.state.parcelas.filter((p) => p.estado !== 'archivada').concat(S.state.parcelas.filter((p) => p.estado === 'archivada'));
+
+  /* ------------------------------ Parcela ------------------------------ */
+  const FormParcela = {
+    props: { data: Object },
+    setup(props) {
+      const hoy = S.state.hoy;
+      const editing = !!props.data.id;
+      const f = reactive(Object.assign({
+        nombre: '', codigo: '', variedad: 'MD-2', hectareas: '', fechaSiembra: hoy, ciclo: 1, fechaInicioCiclo: '', fechaInduccion: '',
+        densidad: '', pesoFruto: '', aprovechamiento: '', color: C.COLORES_PARCELA[S.state.parcelas.length % C.COLORES_PARCELA.length], notas: ''
+      }, props.data));
+      if (f.fechaInduccion == null) f.fechaInduccion = '';
+      ['densidad', 'pesoFruto', 'aprovechamiento'].forEach((k) => { if (f[k] == null) f[k] = ''; });
+      const pb = f.presupuestoHa || {};
+      const presu = reactive({ manoObra: pb.manoObra != null ? pb.manoObra : '', insumos: pb.insumos != null ? pb.insumos : '', otros: pb.otros != null ? pb.otros : '' });
+      const presuDef = S.state.settings.presupuestoHa;
+      const errors = reactive({});
+      const advanced = ref(false);
+      const v = computed(() => A.variedad(f.variedad));
+      const draft = () => Object.assign({}, f, {
+        hectareas: Number(f.hectareas) || 0,
+        fechaInicioCiclo: Number(f.ciclo) > 1 ? (f.fechaInicioCiclo || f.fechaSiembra) : f.fechaSiembra,
+        fechaInduccion: f.fechaInduccion || null,
+        presupuestoHa: [presu.manoObra, presu.insumos, presu.otros].some((x) => x !== '' && x != null)
+          ? { manoObra: presu.manoObra === '' ? presuDef.manoObra : presu.manoObra, insumos: presu.insumos === '' ? presuDef.insumos : presu.insumos, otros: presu.otros === '' ? presuDef.otros : presu.otros }
+          : null
+      });
+      const preview = computed(() => (f.fechaSiembra ? { e: A.estado(draft(), S.state.hoy), prod: A.produccion(draft()) } : null));
+      const save = () => {
+        Object.keys(errors).forEach((k) => delete errors[k]);
+        if (!String(f.nombre).trim()) errors.nombre = 'Ingrese un nombre';
+        if (!(Number(f.hectareas) > 0)) errors.hectareas = 'Área mayor a 0';
+        if (!f.fechaSiembra) errors.fechaSiembra = 'Requerido';
+        if (Object.keys(errors).length) return;
+        const p = S.saveParcela(draft());
+        S.closeForm();
+        if (!editing) AP.router.go('parcelas/' + p.id);
+      };
+      return { f, errors, advanced, v, preview, save, editing, presu, presuDef, C, U, S, close: S.closeForm };
+    },
+    template: `
+      <ap-modal :title="editing ? 'Editar parcela' : 'Nueva parcela'" subtitle="Lote de producción y parámetros del ciclo" icon="fa-layer-group" size="lg" @close="close">
+        <form class="grid grid-cols-2 gap-x-3 gap-y-4" @submit.prevent="save">
+          <div class="col-span-2 sm:col-span-1">
+            <label class="label">Nombre de la parcela *</label>
+            <input v-model="f.nombre" class="input" placeholder="Ej. Bloque Norte A" autofocus>
+            <p v-if="errors.nombre" class="hint !text-red-500">{{ errors.nombre }}</p>
+          </div>
+          <div class="col-span-2 sm:col-span-1">
+            <label class="label">Código / bloque</label>
+            <input v-model="f.codigo" class="input" placeholder="Ej. BN-A">
+          </div>
+          <div>
+            <label class="label">Variedad</label>
+            <select v-model="f.variedad" class="input"><option v-for="(vv, k) in C.VARIEDADES" :key="k" :value="k">{{ vv.nombre }}</option></select>
+          </div>
+          <div>
+            <label class="label">Área (ha) *</label>
+            <input v-model="f.hectareas" type="number" step="any" min="0" inputmode="decimal" class="input" placeholder="0.0">
+            <p v-if="errors.hectareas" class="hint !text-red-500">{{ errors.hectareas }}</p>
+          </div>
+          <div>
+            <label class="label">Fecha de siembra *</label>
+            <input v-model="f.fechaSiembra" type="date" class="input">
+          </div>
+          <div>
+            <label class="label">Ciclo</label>
+            <select v-model.number="f.ciclo" class="input">
+              <option :value="1">Planta (1.ª cosecha)</option><option :value="2">Soca 1 (2.ª cosecha)</option><option :value="3">Soca 2 (3.ª cosecha)</option>
+            </select>
+          </div>
+          <div v-if="f.ciclo > 1">
+            <label class="label">Inicio del ciclo actual</label>
+            <input v-model="f.fechaInicioCiclo" type="date" class="input">
+            <p class="hint">Fecha de la última cosecha</p>
+          </div>
+          <div :class="f.ciclo > 1 ? '' : 'col-span-2 sm:col-span-1'">
+            <label class="label">Fecha de inducción floral</label>
+            <input v-model="f.fechaInduccion" type="date" class="input">
+            <p class="hint">Déjela vacía si aún no se ha forzado</p>
+          </div>
+          <div class="col-span-2">
+            <label class="label">Color de identificación</label>
+            <div class="flex flex-wrap gap-2">
+              <button v-for="c in C.COLORES_PARCELA" :key="c" type="button" @click="f.color = c" :style="{ background: c }" :class="['w-8 h-8 rounded-full ring-offset-2 ring-offset-white dark:ring-offset-ink-900 transition', f.color === c ? 'ring-2 ring-ink-900 dark:ring-white scale-110' : 'hover:scale-105']" :aria-label="'Color ' + c"></button>
+            </div>
+          </div>
+
+          <button type="button" class="col-span-2 flex items-center gap-2 text-sm font-semibold text-brand-700 dark:text-brand-400" @click="advanced = !advanced">
+            <i :class="['fa-solid fa-chevron-right text-xs transition', advanced ? 'rotate-90' : '']"></i> Parámetros agronómicos avanzados
+          </button>
+          <template v-if="advanced">
+            <div>
+              <label class="label">Densidad (plantas/ha)</label>
+              <input v-model="f.densidad" type="number" step="100" min="0" class="input" :placeholder="U.fmtNum(v.densidad)">
+            </div>
+            <div>
+              <label class="label">Peso medio de fruta (kg)</label>
+              <input v-model="f.pesoFruto" type="number" step="0.05" min="0" class="input" :placeholder="v.pesoFruto">
+            </div>
+            <div>
+              <label class="label">Aprovechamiento (%)</label>
+              <input v-model="f.aprovechamiento" type="number" step="1" min="0" max="100" class="input" :placeholder="f.ciclo > 1 ? 80 : 90">
+            </div>
+            <div class="col-span-2">
+              <p class="section-title mb-2">Presupuesto del ciclo por hectárea ({{ S.state.settings.moneda }})</p>
+              <div class="grid grid-cols-3 gap-3">
+                <div><label class="label">Mano de obra</label><input v-model="presu.manoObra" type="number" step="any" min="0" class="input" :placeholder="presuDef.manoObra"></div>
+                <div><label class="label">Insumos</label><input v-model="presu.insumos" type="number" step="any" min="0" class="input" :placeholder="presuDef.insumos"></div>
+                <div><label class="label">Otros</label><input v-model="presu.otros" type="number" step="any" min="0" class="input" :placeholder="presuDef.otros"></div>
+              </div>
+              <p class="hint">Vacío = presupuesto estándar de la finca (Configuración).</p>
+            </div>
+            <div class="col-span-2">
+              <label class="label">Notas</label>
+              <textarea v-model="f.notas" rows="2" class="input" placeholder="Tipo de suelo, drenaje, observaciones…"></textarea>
+            </div>
+          </template>
+
+          <div v-if="preview && preview.e" class="col-span-2 rounded-2xl p-4 bg-gradient-to-br from-brand-50 to-gold-50/60 dark:from-brand-500/10 dark:to-gold-500/5 ring-1 ring-brand-500/10">
+            <p class="eyebrow mb-3 !text-brand-700 dark:!text-brand-400"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Proyección automática</p>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+              <div><p class="muted text-xs">Fase actual</p><ap-fase :fase="preview.e.fase" short class="mt-1"></ap-fase></div>
+              <div><p class="muted text-xs">Inducción</p><p class="font-bold">{{ U.fmtDate(preview.e.induccionEst, 'short') }}</p></div>
+              <div><p class="muted text-xs">Cosecha estimada</p><p class="font-bold">{{ U.fmtDate(preview.e.cosechaEst, 'short') }}</p></div>
+              <div><p class="muted text-xs">Producción</p><p class="font-bold num">{{ U.fmtNum(preview.prod.toneladas) }} t <span class="muted font-medium text-xs">({{ U.fmtNum(preview.prod.tHa) }} t/ha)</span></p></div>
+            </div>
+          </div>
+          <button type="submit" class="hidden"></button>
+        </form>
+        <template #footer>
+          <button class="btn btn-ghost" @click="close">Cancelar</button>
+          <button class="btn btn-primary" @click="save"><i class="fa-solid fa-check"></i>{{ editing ? 'Guardar cambios' : 'Crear parcela' }}</button>
+        </template>
+      </ap-modal>`
+  };
+
+  /* ------------------------------ Labor ------------------------------ */
+  const FormLabor = {
+    props: { data: Object },
+    setup(props) {
+      const editing = !!props.data.id;
+      const f = reactive(Object.assign({
+        parcelaId: '', tipo: 'Fertilización', estado: 'completada', prioridad: 'media', fecha: S.state.hoy, descripcion: '', responsable: '',
+        jornales: '', costoManoObra: '', otrosCostos: '', insumos: [], trabajadores: []
+      }, props.data));
+      f.trabajadores = (f.trabajadores || []).map((t) => ({ trabajadorId: t.trabajadorId, jornales: t.jornales, tarifa: t.tarifa }));
+      ['jornales', 'costoManoObra', 'otrosCostos'].forEach((k) => { if (f[k] === 0 && !editing) f[k] = ''; });
+      f.insumos = (f.insumos || []).map((li) => Object.assign({ insumoId: '', dosisHa: '', cantidad: '' }, li, { dosisHa: li.dosisHa == null ? '' : li.dosisHa }));
+      const seleccion = ref(f.parcelaId ? [f.parcelaId] : []);
+      const errors = reactive({});
+      const parcelas = computed(parcelasOpts);
+      const haTotal = computed(() => U.sum(seleccion.value, (id) => { const p = S.parcela(id); return p ? p.hectareas : 0; }));
+      const tipoInfo = computed(() => C.labor(f.tipo));
+      const insumos = computed(() => S.state.insumos.slice().sort((a, b) => a.nombre.localeCompare(b.nombre)));
+      const toggle = (id) => {
+        if (editing) { seleccion.value = [id]; return; }
+        const i = seleccion.value.indexOf(id);
+        if (i >= 0) seleccion.value.splice(i, 1); else seleccion.value.push(id);
+      };
+      const recalc = (li) => { if (li.dosisHa !== '' && li.dosisHa != null) li.cantidad = U.round(Number(li.dosisHa) * haTotal.value, 2); };
+      watch(haTotal, () => f.insumos.forEach(recalc));
+      const addLine = () => f.insumos.push({ insumoId: '', dosisHa: '', cantidad: '' });
+      const ins = (id) => S.insumo(id);
+      const costoLinea = (li) => (Number(li.cantidad) || 0) * (li.costoUnitario != null && li.costoUnitario !== '' ? Number(li.costoUnitario) : (ins(li.insumoId) ? ins(li.insumoId).costoUnitario : 0));
+      const costoInsumos = computed(() => U.sum(f.insumos, costoLinea));
+      const total = computed(() => costoInsumos.value + (Number(f.costoManoObra) || 0) + (Number(f.otrosCostos) || 0));
+      const carenciaMax = computed(() => Math.max(0, ...f.insumos.map((li) => (ins(li.insumoId) ? ins(li.insumoId).carencia : 0))));
+      const futuro = computed(() => f.fecha > S.state.hoy);
+      watch(() => f.fecha, (v, old) => { if (!editing && v > S.state.hoy && old <= S.state.hoy) f.estado = 'pendiente'; });
+      // Personal asignado: el costo de mano de obra se calcula con la tarifa de cada trabajador
+      const personal = computed(() => S.state.trabajadores.filter((t) => t.activo || f.trabajadores.some((x) => x.trabajadorId === t.id)).sort((a, b) => a.nombre.localeCompare(b.nombre)));
+      const nuevoTrab = ref('');
+      const addTrab = () => { if (nuevoTrab.value && !f.trabajadores.some((x) => x.trabajadorId === nuevoTrab.value)) f.trabajadores.push({ trabajadorId: nuevoTrab.value, jornales: 1, tarifa: null }); nuevoTrab.value = ''; };
+      const addCuadrilla = (cuadrilla) => { S.state.trabajadores.filter((t) => t.activo && t.cuadrilla === cuadrilla && !f.trabajadores.some((x) => x.trabajadorId === t.id)).forEach((t) => f.trabajadores.push({ trabajadorId: t.id, jornales: 1, tarifa: null })); };
+      const cuadrillas = computed(() => [...new Set(S.state.trabajadores.filter((t) => t.activo && t.cuadrilla).map((t) => t.cuadrilla))].sort());
+      const tarifaDe = (x) => (x.tarifa != null ? Number(x.tarifa) : (S.trabajador(x.trabajadorId) ? S.trabajador(x.trabajadorId).tarifaJornal : 0));
+      const moAuto = computed(() => (f.trabajadores.length ? { jornales: U.sum(f.trabajadores, (x) => x.jornales), costo: U.sum(f.trabajadores, (x) => (Number(x.jornales) || 0) * tarifaDe(x)) } : null));
+      watch(moAuto, (v) => { if (v) { f.jornales = U.round(v.jornales, 2); f.costoManoObra = U.round(v.costo, 2); } }, { deep: true });
+      const save = () => {
+        Object.keys(errors).forEach((k) => delete errors[k]);
+        if (!seleccion.value.length) errors.parcela = 'Seleccione al menos una parcela';
+        if (!f.fecha) errors.fecha = 'Requerido';
+        if (Object.keys(errors).length) return;
+        const n = seleccion.value.length;
+        const tot = haTotal.value;
+        seleccion.value.forEach((id) => {
+          const p = S.parcela(id);
+          const share = n === 1 ? 1 : tot > 0 ? p.hectareas / tot : 1 / n;
+          S.saveLabor(Object.assign({}, f, {
+            id: editing ? f.id : undefined, parcelaId: id,
+            jornales: U.round((Number(f.jornales) || 0) * share, 2),
+            costoManoObra: U.round((Number(f.costoManoObra) || 0) * share, 2),
+            otrosCostos: U.round((Number(f.otrosCostos) || 0) * share, 2),
+            insumos: f.insumos.map((li) => Object.assign({}, li, { cantidad: U.round((Number(li.cantidad) || 0) * share, 3) })),
+            trabajadores: f.trabajadores.map((x) => Object.assign({}, x, { jornales: U.round((Number(x.jornales) || 0) * share, 2) }))
+          }), { silent: n > 1 });
+        });
+        if (n > 1) S.toast(n + ' labores registradas (costos, insumos y jornales repartidos por área)');
+        S.closeForm();
+      };
+      return { f, errors, editing, parcelas, seleccion, toggle, haTotal, tipoInfo, insumos, addLine, recalc, ins, costoLinea, costoInsumos, total, carenciaMax, futuro, save, personal, nuevoTrab, addTrab, addCuadrilla, cuadrillas, tarifaDe, moAuto, B: AP.negocio, C, U, S, money: AP.money, close: S.closeForm };
+    },
+    template: `
+      <ap-modal :title="editing ? 'Editar orden de trabajo' : 'Nueva orden de trabajo'" subtitle="Labor de campo, personal, insumos y costos" :icon="tipoInfo.icon" size="lg" @close="close">
+        <div class="space-y-5">
+          <div>
+            <label class="label">{{ editing ? 'Parcela' : 'Parcelas (puede elegir varias)' }}</label>
+            <div v-if="parcelas.length" class="flex flex-wrap gap-2">
+              <button v-for="p in parcelas" :key="p.id" type="button" @click="toggle(p.id)" :class="['filter-chip', seleccion.includes(p.id) ? 'filter-chip-on' : '']">
+                <span class="w-2 h-2 rounded-full" :style="{ background: p.color }"></span>{{ p.nombre }}<span class="opacity-60">{{ U.fmtNum(p.hectareas, 1) }} ha</span>
+              </button>
+            </div>
+            <p v-else class="text-sm muted">Primero cree una parcela.</p>
+            <p v-if="errors.parcela" class="hint !text-red-500">{{ errors.parcela }}</p>
+            <p v-if="seleccion.length > 1" class="hint">{{ seleccion.length }} parcelas · {{ U.fmtNum(haTotal, 1) }} ha. Se creará una labor por parcela y los costos se repartirán según el área.</p>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="col-span-2 sm:col-span-1">
+              <label class="label">Tipo de labor</label>
+              <select v-model="f.tipo" class="input"><option v-for="(t, k) in C.LABORES" :key="k" :value="k">{{ k }}</option></select>
+            </div>
+            <div>
+              <label class="label">Fecha</label>
+              <input v-model="f.fecha" type="date" class="input">
+            </div>
+            <div class="col-span-2 sm:col-span-1">
+              <label class="label">Estado</label>
+              <ap-seg v-model="f.estado" class="w-full" :options="[{ value: 'pendiente', label: 'Programada' }, { value: 'en_proceso', label: 'En proceso' }, { value: 'completada', label: 'Realizada' }]"></ap-seg>
+            </div>
+            <div class="col-span-2 sm:col-span-1">
+              <label class="label">Prioridad</label>
+              <ap-seg v-model="f.prioridad" class="w-full" :options="[{ value: 'alta', label: 'Alta' }, { value: 'media', label: 'Media' }, { value: 'baja', label: 'Baja' }]"></ap-seg>
+            </div>
+            <div class="col-span-2 sm:col-span-1">
+              <label class="label">Responsable / cuadrilla</label>
+              <input v-model="f.responsable" class="input" placeholder="Ej. Cuadrilla 1">
+            </div>
+            <div class="col-span-2">
+              <label class="label">Descripción</label>
+              <textarea v-model="f.descripcion" rows="2" class="input" placeholder="Detalle de la labor, dosis, observaciones…"></textarea>
+            </div>
+          </div>
+
+          <div class="rounded-2xl border border-ink-200/80 dark:border-white/[0.07] overflow-hidden">
+            <div class="flex items-center justify-between px-4 py-3 bg-ink-50 dark:bg-white/[0.03]">
+              <p class="text-sm font-bold"><i class="fa-solid fa-flask text-brand-600 mr-1.5"></i>Insumos aplicados</p>
+              <button type="button" class="btn btn-soft btn-sm" @click="addLine" :disabled="!insumos.length"><i class="fa-solid fa-plus"></i>Agregar</button>
+            </div>
+            <div v-if="!insumos.length" class="px-4 py-4 text-sm muted">No hay insumos en el inventario. <a href="#/inventario" @click="close" class="font-semibold text-brand-600">Agréguelos aquí</a> para descontar stock y calcular costos.</div>
+            <div v-else-if="!f.insumos.length" class="px-4 py-4 text-sm muted">Sin insumos. Agréguelos para descontar el inventario automáticamente y controlar los períodos de carencia.</div>
+            <div v-for="(li, i) in f.insumos" :key="i" class="px-4 py-3 border-t border-ink-100 dark:border-white/5 grid grid-cols-12 gap-2 items-end">
+              <div class="col-span-12 sm:col-span-5">
+                <label class="label">Producto</label>
+                <select v-model="li.insumoId" class="input" @change="li.costoUnitario = null">
+                  <option value="">Seleccionar…</option>
+                  <option v-for="x in insumos" :key="x.id" :value="x.id">{{ x.nombre }} · {{ U.fmtNum(x.stock, 1) }} {{ x.unidad }}</option>
+                </select>
+              </div>
+              <div class="col-span-5 sm:col-span-3">
+                <label class="label">Dosis / ha</label>
+                <input v-model="li.dosisHa" @input="recalc(li)" type="number" step="any" min="0" class="input" placeholder="0">
+              </div>
+              <div class="col-span-5 sm:col-span-3">
+                <label class="label">Total {{ ins(li.insumoId) ? '(' + ins(li.insumoId).unidad + ')' : '' }}</label>
+                <input v-model="li.cantidad" type="number" step="any" min="0" class="input" placeholder="0">
+              </div>
+              <div class="col-span-2 sm:col-span-1 flex justify-end">
+                <button type="button" class="btn-icon text-red-500" @click="f.insumos.splice(i, 1)" aria-label="Quitar"><i class="fa-solid fa-trash-can"></i></button>
+              </div>
+              <div v-if="ins(li.insumoId)" class="col-span-12 flex flex-wrap gap-x-4 gap-y-1 text-[11px] muted">
+                <span>Subtotal: <b class="text-ink-700 dark:text-ink-200">{{ money(costoLinea(li)) }}</b></span>
+                <span :class="ins(li.insumoId).stock < Number(li.cantidad) ? 'text-red-500 font-semibold' : ''">Stock: {{ U.fmtNum(ins(li.insumoId).stock, 2) }} {{ ins(li.insumoId).unidad }}</span>
+                <span v-if="ins(li.insumoId).carencia" class="text-amber-600 font-semibold"><i class="fa-solid fa-shield-halved"></i> Carencia {{ ins(li.insumoId).carencia }} días</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="rounded-xl border border-ink-200 dark:border-white/[0.08] overflow-hidden">
+            <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 bg-ink-50 dark:bg-white/[0.03]">
+              <p class="text-[13px] font-semibold"><i class="fa-solid fa-people-group text-brand-700 mr-1.5"></i>Personal asignado</p>
+              <div class="flex gap-1.5 flex-wrap">
+                <button v-for="c in cuadrillas" :key="c" type="button" class="btn btn-outline btn-sm" @click="addCuadrilla(c)"><i class="fa-solid fa-plus"></i>{{ c }}</button>
+              </div>
+            </div>
+            <div v-if="!personal.length" class="px-4 py-3 text-[13px] muted">Sin trabajadores registrados. <a href="#/personal" @click="close" class="font-semibold text-brand-700">Agréguelos en Personal</a> para calcular la planilla por labor.</div>
+            <template v-else>
+              <div v-for="(x, i) in f.trabajadores" :key="x.trabajadorId" class="px-4 py-2 border-t border-ink-100 dark:border-white/5 flex items-center gap-3">
+                <span class="flex-1 min-w-0 text-[13px] truncate">{{ S.trabajador(x.trabajadorId) ? S.trabajador(x.trabajadorId).nombre : 'Trabajador' }} <span class="muted">· {{ money(tarifaDe(x)) }}/jornal</span></span>
+                <input v-model.number="x.jornales" type="number" step="0.5" min="0" class="input h-8 w-20 text-right" aria-label="Jornales">
+                <span class="text-[12px] w-24 text-right num font-medium">{{ money((Number(x.jornales) || 0) * tarifaDe(x)) }}</span>
+                <button type="button" class="btn-icon btn-icon-sm text-red-500" @click="f.trabajadores.splice(i, 1)" aria-label="Quitar"><i class="fa-solid fa-xmark"></i></button>
+              </div>
+              <div class="px-4 py-2 border-t border-ink-100 dark:border-white/5 flex gap-2">
+                <select v-model="nuevoTrab" class="input h-8 text-[13px]" @change="addTrab"><option value="">Agregar trabajador…</option><option v-for="t in personal" :key="t.id" :value="t.id" :disabled="f.trabajadores.some((x) => x.trabajadorId === t.id)">{{ t.nombre }} · {{ t.cuadrilla || t.puesto }}</option></select>
+              </div>
+            </template>
+          </div>
+
+          <div class="grid grid-cols-3 gap-3">
+            <div><label class="label">Jornales</label><input v-model="f.jornales" type="number" step="any" min="0" class="input" placeholder="0" :disabled="!!moAuto"></div>
+            <div><label class="label">Mano de obra ({{ S.state.settings.moneda }})</label><input v-model="f.costoManoObra" type="number" step="any" min="0" class="input" placeholder="0" :disabled="!!moAuto">
+              <p v-if="moAuto" class="hint">Calculado según el personal asignado</p></div>
+            <div><label class="label">Otros costos</label><input v-model="f.otrosCostos" type="number" step="any" min="0" class="input" placeholder="0"></div>
+          </div>
+
+          <div v-if="carenciaMax && f.estado === 'completada'" class="flex gap-3 items-start rounded-xl p-3 bg-amber-50 text-amber-800 dark:bg-amber-500/10 dark:text-amber-300 text-sm">
+            <i class="fa-solid fa-shield-halved mt-0.5"></i>
+            <span>Esta aplicación activa un período de carencia de <b>{{ carenciaMax }} días</b>: no se podrá cosechar antes del <b>{{ U.fmtDate(U.addDays(f.fecha, carenciaMax)) }}</b>.</span>
+          </div>
+          <div v-if="futuro && f.estado === 'completada'" class="flex gap-3 items-start rounded-xl p-3 bg-sky-50 text-sky-800 dark:bg-sky-500/10 dark:text-sky-300 text-sm">
+            <i class="fa-solid fa-circle-info mt-0.5"></i><span>La fecha es futura. ¿Desea dejarla como <button class="underline font-semibold" @click="f.estado = 'pendiente'">programada</button>?</span>
+          </div>
+        </div>
+        <template #footer>
+          <div class="mr-auto text-sm"><span class="muted">Costo total</span> <b class="num text-base text-ink-950 dark:text-white">{{ money(total) }}</b></div>
+          <button class="btn btn-ghost" @click="close">Cancelar</button>
+          <button class="btn btn-primary" @click="save"><i class="fa-solid fa-check"></i>{{ editing ? 'Guardar' : f.estado === 'completada' ? 'Registrar labor' : 'Crear orden' }}</button>
+        </template>
+      </ap-modal>`
+  };
+
+  /* ------------------------------ Cosecha ------------------------------ */
+  const FormCosecha = {
+    props: { data: Object },
+    setup(props) {
+      const editing = !!props.data.id;
+      const f = reactive(Object.assign({
+        parcelaId: '', fecha: S.state.hoy, toneladas: '', cajas: '', exportable: '', brix: '', precio: S.state.settings.precioReferencia || '',
+        destino: 'Exportación', comprador: '', clienteId: '', factura: '', estadoPago: 'pendiente', notas: '', cierraCiclo: false
+      }, props.data));
+      const clientes = computed(() => S.state.clientes.slice().sort((a, b) => a.nombre.localeCompare(b.nombre)));
+      const DESTINO_TIPO = { 'Exportadora': 'Exportación', 'Mercado nacional': 'Mercado nacional', 'Industria': 'Industria' };
+      watch(() => f.clienteId, (id) => { const c = S.cliente(id); if (c && DESTINO_TIPO[c.tipo]) f.destino = DESTINO_TIPO[c.tipo]; });
+      ['cajas', 'exportable', 'brix'].forEach((k) => { if (f[k] == null) f[k] = ''; });
+      const errors = reactive({});
+      const parcelas = computed(parcelasOpts);
+      const p = computed(() => S.parcela(f.parcelaId));
+      const carencia = computed(() => { const c = S.carencias.value[f.parcelaId]; return c && f.fecha < c.hasta ? c : null; });
+      const estimado = computed(() => {
+        if (!p.value) return null;
+        const prod = S.produccion.value[p.value.id];
+        const cosechado = U.sum(S.state.cosechas.filter((c) => c.parcelaId === p.value.id && (c.ciclo != null ? c.ciclo === p.value.ciclo : c.fecha >= p.value.fechaInicioCiclo) && c.id !== f.id), (c) => c.toneladas);
+        return { total: prod.toneladas, cosechado, restante: Math.max(0, prod.toneladas - cosechado) };
+      });
+      const ingreso = computed(() => (Number(f.toneladas) || 0) * (Number(f.precio) || 0));
+      const desdeCajas = () => { if (Number(f.cajas) > 0) f.toneladas = U.round((Number(f.cajas) * C.KG_POR_CAJA) / 1000, 2); };
+      const save = () => {
+        Object.keys(errors).forEach((k) => delete errors[k]);
+        if (!f.parcelaId) errors.parcelaId = 'Seleccione la parcela';
+        if (!(Number(f.toneladas) > 0)) errors.toneladas = 'Ingrese las toneladas';
+        if (Object.keys(errors).length) return;
+        S.saveCosecha(Object.assign({}, f));
+        S.closeForm();
+      };
+      return { f, errors, editing, parcelas, p, carencia, estimado, ingreso, desdeCajas, save, clientes, S, C, U, money: AP.money, close: S.closeForm };
+    },
+    template: `
+      <ap-modal :title="editing ? 'Editar cosecha' : 'Registrar cosecha'" subtitle="Producción, calidad y comercialización" icon="fa-basket-shopping" size="lg" @close="close">
+        <div class="grid grid-cols-2 gap-x-3 gap-y-4">
+          <div class="col-span-2 sm:col-span-1">
+            <label class="label">Parcela *</label>
+            <select v-model="f.parcelaId" class="input"><option value="">Seleccionar…</option><option v-for="x in parcelas" :key="x.id" :value="x.id">{{ x.nombre }}</option></select>
+            <p v-if="errors.parcelaId" class="hint !text-red-500">{{ errors.parcelaId }}</p>
+          </div>
+          <div class="col-span-2 sm:col-span-1"><label class="label">Fecha</label><input v-model="f.fecha" type="date" class="input"></div>
+          <div v-if="carencia" class="col-span-2 flex gap-3 items-start rounded-xl p-3 bg-red-50 text-red-800 dark:bg-red-500/10 dark:text-red-300 text-sm">
+            <i class="fa-solid fa-shield-halved mt-0.5"></i>
+            <span><b>Período de carencia activo</b> hasta el {{ U.fmtDate(carencia.hasta) }} por {{ carencia.producto }}. Cosechar antes incumple las buenas prácticas agrícolas.</span>
+          </div>
+          <div v-if="estimado" class="col-span-2 grid grid-cols-3 gap-2 text-center rounded-xl p-3 bg-ink-50 dark:bg-white/[0.03] text-xs">
+            <div><p class="muted">Estimado ciclo</p><p class="font-bold text-sm num">{{ U.fmtNum(estimado.total) }} t</p></div>
+            <div><p class="muted">Ya cosechado</p><p class="font-bold text-sm num">{{ U.fmtNum(estimado.cosechado) }} t</p></div>
+            <div><p class="muted">Restante</p><p class="font-bold text-sm num text-brand-600">{{ U.fmtNum(estimado.restante) }} t</p></div>
+          </div>
+          <div>
+            <label class="label">Toneladas *</label>
+            <input v-model="f.toneladas" type="number" step="any" min="0" class="input" placeholder="0.0">
+            <p v-if="errors.toneladas" class="hint !text-red-500">{{ errors.toneladas }}</p>
+          </div>
+          <div>
+            <label class="label">Cajas</label>
+            <div class="flex gap-2"><input v-model="f.cajas" type="number" step="1" min="0" class="input" placeholder="0">
+            <button type="button" class="btn btn-soft px-3" title="Calcular toneladas desde cajas (12 kg)" @click="desdeCajas"><i class="fa-solid fa-calculator"></i></button></div>
+          </div>
+          <div><label class="label">Exportable (%)</label><input v-model="f.exportable" type="number" min="0" max="100" class="input" placeholder="0"></div>
+          <div><label class="label">°Brix promedio</label><input v-model="f.brix" type="number" step="0.1" min="0" class="input" placeholder="0.0"></div>
+          <div><label class="label">Destino</label><select v-model="f.destino" class="input"><option v-for="(t, k) in C.DESTINOS" :key="k" :value="k">{{ k }}</option></select></div>
+          <div><label class="label">Precio por tonelada</label><input v-model="f.precio" type="number" step="any" min="0" class="input" placeholder="0"></div>
+          <div class="col-span-2 sm:col-span-1">
+            <label class="label">Cliente</label>
+            <select v-model="f.clienteId" class="input"><option value="">Sin cliente registrado</option><option v-for="c in clientes" :key="c.id" :value="c.id">{{ c.nombre }}</option></select>
+            <p v-if="!clientes.length" class="hint">Registre clientes en <a href="#/ventas" class="font-semibold text-brand-700" @click="close">Ventas y cobros</a> para controlar las cuentas por cobrar.</p>
+          </div>
+          <div class="col-span-2 sm:col-span-1"><label class="label">N.º de factura / despacho</label><input v-model="f.factura" class="input" placeholder="Ej. FE-0113"></div>
+          <div v-if="!f.clienteId" class="col-span-2"><label class="label">Comprador (texto libre)</label><input v-model="f.comprador" class="input" placeholder="Ej. Exportadora del Caribe · Lote 2291"></div>
+          <div class="col-span-2">
+            <label class="label">Estado del cobro</label>
+            <ap-seg v-model="f.estadoPago" :options="[{ value: 'pendiente', label: 'Por cobrar', icon: 'fa-hourglass-half' }, { value: 'pagado', label: 'Cobrado', icon: 'fa-check' }]"></ap-seg>
+            <p v-if="f.estadoPago === 'pendiente' && f.clienteId && S.cliente(f.clienteId)" class="hint">Vence el {{ U.fmtDate(U.addDays(f.fecha, S.cliente(f.clienteId).diasCredito)) }} ({{ S.cliente(f.clienteId).diasCredito }} días de crédito).</p>
+          </div>
+          <div class="col-span-2"><label class="label">Notas</label><textarea v-model="f.notas" rows="2" class="input" placeholder="Calibres, defectos, observaciones…"></textarea></div>
+          <label v-if="!f.cicloCerrado" class="col-span-2 flex items-start gap-3 p-3 rounded-xl border border-ink-200 dark:border-white/10 cursor-pointer hover:bg-ink-50 dark:hover:bg-white/[0.03]">
+            <input v-model="f.cierraCiclo" type="checkbox" class="mt-1 w-4 h-4 accent-emerald-600">
+            <span class="text-sm"><b>Último pase: cerrar el ciclo</b><br><span class="muted">La parcela pasa a <b>{{ p ? 'Soca ' + p.ciclo : 'soca' }}</b> y el ciclo se reinicia desde esta fecha.</span></span>
+          </label>
+        </div>
+        <template #footer>
+          <div class="mr-auto text-sm"><span class="muted">Ingreso</span> <b class="num text-base text-ink-950 dark:text-white">{{ money(ingreso) }}</b></div>
+          <button class="btn btn-ghost" @click="close">Cancelar</button>
+          <button class="btn btn-primary" @click="save"><i class="fa-solid fa-check"></i>Guardar cosecha</button>
+        </template>
+      </ap-modal>`
+  };
+
+  /* ------------------------------ Monitoreo ------------------------------ */
+  const FormMonitoreo = {
+    props: { data: Object },
+    setup(props) {
+      const editing = !!props.data.id;
+      const f = reactive(Object.assign({ parcelaId: '', fecha: S.state.hoy, plaga: 'cochinilla', severidad: 2, incidencia: '', muestras: '', accion: '', notas: '' }, props.data));
+      ['incidencia', 'muestras'].forEach((k) => { if (f[k] == null) f[k] = ''; });
+      const errors = reactive({});
+      const parcelas = computed(parcelasOpts);
+      const grupos = computed(() => U.groupBy(C.PLAGAS, (p) => p.tipo));
+      const plaga = computed(() => C.plaga(f.plaga));
+      const save = () => {
+        if (!f.parcelaId) { errors.parcelaId = 'Seleccione la parcela'; return; }
+        S.saveMonitoreo(Object.assign({}, f));
+        S.closeForm();
+      };
+      return { f, errors, editing, parcelas, grupos, plaga, save, C, close: S.closeForm };
+    },
+    template: `
+      <ap-modal :title="editing ? 'Editar monitoreo' : 'Monitoreo fitosanitario'" subtitle="Plagas, enfermedades y severidad en campo" icon="fa-bug" @close="close">
+        <div class="grid grid-cols-2 gap-x-3 gap-y-4">
+          <div class="col-span-2 sm:col-span-1">
+            <label class="label">Parcela *</label>
+            <select v-model="f.parcelaId" class="input"><option value="">Seleccionar…</option><option v-for="x in parcelas" :key="x.id" :value="x.id">{{ x.nombre }}</option></select>
+            <p v-if="errors.parcelaId" class="hint !text-red-500">{{ errors.parcelaId }}</p>
+          </div>
+          <div class="col-span-2 sm:col-span-1"><label class="label">Fecha</label><input v-model="f.fecha" type="date" class="input"></div>
+          <div class="col-span-2">
+            <label class="label">Plaga / enfermedad</label>
+            <select v-model="f.plaga" class="input">
+              <optgroup v-for="(items, g) in grupos" :key="g" :label="g"><option v-for="x in items" :key="x.key" :value="x.key">{{ x.nombre }}</option></optgroup>
+            </select>
+            <p v-if="plaga.cientifico" class="hint italic">{{ plaga.cientifico }}</p>
+          </div>
+          <div class="col-span-2">
+            <label class="label">Severidad</label>
+            <div class="grid grid-cols-5 gap-2">
+              <button v-for="n in 5" :key="n" type="button" @click="f.severidad = n" :class="['rounded-xl py-2 text-xs font-bold border transition', f.severidad === n ? C.SEVERIDAD[n].tone.chip + ' border-transparent ring-2 ring-offset-1 ring-offset-white dark:ring-offset-ink-900 ' + C.SEVERIDAD[n].tone.ring : 'border-ink-200 dark:border-white/10 text-ink-500']">
+                <span class="block text-base">{{ n }}</span>{{ C.SEVERIDAD[n].label }}
+              </button>
+            </div>
+          </div>
+          <div><label class="label">Incidencia (%)</label><input v-model="f.incidencia" type="number" min="0" max="100" step="any" class="input" placeholder="0"></div>
+          <div><label class="label">Plantas muestreadas</label><input v-model="f.muestras" type="number" min="0" class="input" placeholder="100"></div>
+          <div class="col-span-2"><label class="label">Acción recomendada</label><input v-model="f.accion" class="input" placeholder="Ej. Aplicación focalizada, monitoreo semanal…"></div>
+          <div class="col-span-2"><label class="label">Observaciones</label><textarea v-model="f.notas" rows="2" class="input" placeholder="Ubicación de focos, síntomas…"></textarea></div>
+        </div>
+        <template #footer>
+          <button class="btn btn-ghost" @click="close">Cancelar</button>
+          <button class="btn btn-primary" @click="save"><i class="fa-solid fa-check"></i>Guardar</button>
+        </template>
+      </ap-modal>`
+  };
+
+  /* ------------------------------ Insumo ------------------------------ */
+  const FormInsumo = {
+    props: { data: Object },
+    setup(props) {
+      const editing = !!props.data.id;
+      const f = reactive(Object.assign({ nombre: '', categoria: 'Fertilizante', unidad: 'kg', stock: '', stockMinimo: '', costoUnitario: '', carencia: '', ingredienteActivo: '', proveedor: '', proveedorId: '', notas: '' }, props.data));
+      const errors = reactive({});
+      const save = () => {
+        if (!String(f.nombre).trim()) { errors.nombre = 'Ingrese el nombre'; return; }
+        S.saveInsumo(Object.assign({}, f));
+        S.closeForm();
+      };
+      return { f, errors, editing, save, C, S, close: S.closeForm };
+    },
+    template: `
+      <ap-modal :title="editing ? 'Editar insumo' : 'Nuevo insumo'" subtitle="Producto del inventario de la finca" icon="fa-box" @close="close">
+        <div class="grid grid-cols-2 gap-x-3 gap-y-4">
+          <div class="col-span-2"><label class="label">Nombre comercial *</label><input v-model="f.nombre" class="input" placeholder="Ej. Urea 46%">
+            <p v-if="errors.nombre" class="hint !text-red-500">{{ errors.nombre }}</p></div>
+          <div><label class="label">Categoría</label><select v-model="f.categoria" class="input"><option v-for="(t, k) in C.CATEGORIAS_INSUMO" :key="k" :value="k">{{ k }}</option></select></div>
+          <div><label class="label">Unidad</label><select v-model="f.unidad" class="input"><option v-for="u in C.UNIDADES" :key="u">{{ u }}</option></select></div>
+          <div><label class="label">{{ editing ? 'Stock actual' : 'Stock inicial' }}</label><input v-model="f.stock" :disabled="editing" type="number" step="any" class="input disabled:opacity-60" placeholder="0">
+            <p v-if="editing" class="hint">Use «Movimiento» para entradas o ajustes</p></div>
+          <div><label class="label">Stock mínimo</label><input v-model="f.stockMinimo" type="number" step="any" min="0" class="input" placeholder="0"></div>
+          <div><label class="label">Costo unitario ({{ S.state.settings.moneda }})</label><input v-model="f.costoUnitario" type="number" step="any" min="0" class="input" placeholder="0.00"></div>
+          <div><label class="label">Carencia (días)</label><input v-model="f.carencia" type="number" step="1" min="0" class="input" placeholder="0">
+            <p class="hint">Intervalo antes de cosecha (PHI)</p></div>
+          <div class="col-span-2 sm:col-span-1"><label class="label">Ingrediente activo</label><input v-model="f.ingredienteActivo" class="input" placeholder="Ej. Etefón"></div>
+          <div class="col-span-2 sm:col-span-1"><label class="label">Proveedor habitual</label>
+            <select v-if="S.state.proveedores.length" v-model="f.proveedorId" class="input" @change="f.proveedor = S.proveedorNombre(f.proveedorId)"><option value="">Sin proveedor</option><option v-for="p in S.state.proveedores" :key="p.id" :value="p.id">{{ p.nombre }}</option></select>
+            <input v-else v-model="f.proveedor" class="input"></div>
+        </div>
+        <template #footer>
+          <button class="btn btn-ghost" @click="close">Cancelar</button>
+          <button class="btn btn-primary" @click="save"><i class="fa-solid fa-check"></i>Guardar</button>
+        </template>
+      </ap-modal>`
+  };
+
+  /* ------------------------------ Movimiento de inventario ------------------------------ */
+  const FormMovimiento = {
+    props: { data: Object },
+    setup(props) {
+      const f = reactive(Object.assign({ insumoId: '', tipo: 'entrada', cantidad: '', costoUnitario: '', fecha: S.state.hoy, nota: '' }, props.data));
+      const i = computed(() => S.insumo(f.insumoId));
+      if (i.value && f.costoUnitario === '') f.costoUnitario = i.value.costoUnitario;
+      watch(() => f.tipo, (t) => { if (t === 'ajuste' && i.value) f.cantidad = i.value.stock; else if (t === 'entrada') f.cantidad = ''; });
+      const err = ref('');
+      const save = () => {
+        if (!i.value) { err.value = 'Seleccione el insumo'; return; }
+        if (f.cantidad === '' || (f.tipo === 'entrada' && !(Number(f.cantidad) > 0))) { err.value = 'Ingrese una cantidad válida'; return; }
+        S.movimientoInsumo(Object.assign({}, f));
+        S.closeForm();
+      };
+      return { f, i, err, save, S, U, close: S.closeForm };
+    },
+    template: `
+      <ap-modal title="Movimiento de inventario" :subtitle="i ? i.nombre : 'Entrada por compra o ajuste por conteo'" icon="fa-right-left" size="sm" @close="close">
+        <div class="space-y-4">
+          <div v-if="!data.insumoId"><label class="label">Insumo</label>
+            <select v-model="f.insumoId" class="input"><option value="">Seleccionar…</option><option v-for="x in S.state.insumos" :key="x.id" :value="x.id">{{ x.nombre }}</option></select></div>
+          <ap-seg v-model="f.tipo" :options="[{ value: 'entrada', label: 'Entrada / compra', icon: 'fa-arrow-down' }, { value: 'ajuste', label: 'Ajuste por conteo', icon: 'fa-scale-balanced' }]"></ap-seg>
+          <div class="grid grid-cols-2 gap-3">
+            <div :class="f.tipo === 'ajuste' ? 'col-span-2' : ''"><label class="label">{{ f.tipo === 'ajuste' ? 'Stock contado' : 'Cantidad' }} {{ i ? '(' + i.unidad + ')' : '' }}</label><input v-model="f.cantidad" type="number" step="any" class="input" placeholder="0"></div>
+            <div v-if="f.tipo === 'entrada'"><label class="label">Costo unitario</label><input v-model="f.costoUnitario" type="number" step="any" min="0" class="input"></div>
+            <div><label class="label">Fecha</label><input v-model="f.fecha" type="date" class="input"></div>
+            <div><label class="label">Nota</label><input v-model="f.nota" class="input" placeholder="Factura, proveedor…"></div>
+          </div>
+          <p v-if="i" class="text-xs muted">Stock actual: <b>{{ U.fmtNum(i.stock, 2) }} {{ i.unidad }}</b>. Las entradas recalculan el costo promedio ponderado.</p>
+          <p v-if="err" class="text-xs text-red-500">{{ err }}</p>
+        </div>
+        <template #footer>
+          <button class="btn btn-ghost" @click="close">Cancelar</button>
+          <button class="btn btn-primary" @click="save"><i class="fa-solid fa-check"></i>Registrar</button>
+        </template>
+      </ap-modal>`
+  };
+
+  /* ------------------------------ Finca ------------------------------ */
+  const FormFinca = {
+    props: { data: Object },
+    setup() {
+      const f = reactive({ nombre: '', moneda: S.state.settings.moneda, copiarCatalogos: true });
+      const err = ref('');
+      const save = () => {
+        if (!f.nombre.trim()) { err.value = 'Ingrese el nombre de la finca'; return; }
+        S.crearFinca(Object.assign({}, f));
+        S.closeForm();
+        AP.router.go('dashboard');
+      };
+      return { f, err, save, C, close: S.closeForm };
+    },
+    template: `
+      <ap-modal title="Nueva finca" subtitle="Unidad productiva con datos, inventario y costos independientes" icon="fa-warehouse" @close="close">
+        <div class="space-y-4">
+          <div><label class="label">Nombre de la finca *</label><input v-model="f.nombre" class="input" placeholder="Ej. Finca Los Laureles" autofocus>
+            <p v-if="err" class="hint !text-red-500">{{ err }}</p></div>
+          <div><label class="label">Moneda</label><select v-model="f.moneda" class="input"><option v-for="m in C.MONEDAS" :key="m.code" :value="m.code">{{ m.label }}</option></select></div>
+          <label class="flex items-start gap-3 p-3 rounded-lg border border-ink-200 dark:border-white/10 cursor-pointer">
+            <input v-model="f.copiarCatalogos" type="checkbox" class="mt-0.5 w-4 h-4 accent-emerald-700">
+            <span class="text-[13px]"><b>Copiar catálogos de la finca actual</b><br><span class="muted">Insumos (con stock en cero), personal, proveedores y clientes.</span></span>
+          </label>
+          <div class="strip st-info"><i class="fa-solid fa-circle-info mt-0.5"></i><span>La nueva finca quedará activa. Puede cambiar de finca en cualquier momento desde la barra superior.</span></div>
+        </div>
+        <template #footer>
+          <button class="btn btn-outline" @click="close">Cancelar</button>
+          <button class="btn btn-primary" @click="save"><i class="fa-solid fa-check"></i>Crear finca</button>
+        </template>
+      </ap-modal>`
+  };
+
+  /* ------------------------------ Trabajador ------------------------------ */
+  const FormTrabajador = {
+    props: { data: Object },
+    setup(props) {
+      const editing = !!props.data.id;
+      const f = reactive(Object.assign({ nombre: '', identificacion: '', cuadrilla: '', puesto: 'Peón agrícola', tarifaJornal: '', telefono: '', activo: true, fechaIngreso: S.state.hoy, notas: '' }, props.data));
+      const err = ref('');
+      const cuadrillas = computed(() => [...new Set(S.state.trabajadores.map((t) => t.cuadrilla).filter(Boolean))].sort());
+      const save = () => {
+        if (!String(f.nombre).trim()) { err.value = 'Ingrese el nombre'; return; }
+        S.saveTrabajador(Object.assign({}, f));
+        S.closeForm();
+      };
+      return { f, err, editing, cuadrillas, save, C, S, close: S.closeForm };
+    },
+    template: `
+      <ap-modal :title="editing ? 'Editar trabajador' : 'Nuevo trabajador'" subtitle="Ficha de personal y tarifa de jornal" icon="fa-user" @close="close">
+        <div class="grid grid-cols-2 gap-x-3 gap-y-4">
+          <div class="col-span-2"><label class="label">Nombre completo *</label><input v-model="f.nombre" class="input" placeholder="Ej. José Rojas Alfaro">
+            <p v-if="err" class="hint !text-red-500">{{ err }}</p></div>
+          <div><label class="label">Identificación</label><input v-model="f.identificacion" class="input" placeholder="Cédula / DIMEX"></div>
+          <div><label class="label">Teléfono</label><input v-model="f.telefono" class="input" placeholder="8888-8888"></div>
+          <div><label class="label">Puesto</label><select v-model="f.puesto" class="input"><option v-for="p in C.PUESTOS" :key="p">{{ p }}</option></select></div>
+          <div><label class="label">Cuadrilla</label><input v-model="f.cuadrilla" class="input" list="ap-cuadrillas" placeholder="Ej. Cuadrilla 1"><datalist id="ap-cuadrillas"><option v-for="c in cuadrillas" :key="c" :value="c"></option></datalist></div>
+          <div><label class="label">Tarifa por jornal ({{ S.state.settings.moneda }})</label><input v-model="f.tarifaJornal" type="number" step="any" min="0" class="input" placeholder="0"></div>
+          <div><label class="label">Fecha de ingreso</label><input v-model="f.fechaIngreso" type="date" class="input"></div>
+          <label class="col-span-2 flex items-center gap-3 text-[13px] cursor-pointer"><input v-model="f.activo" type="checkbox" class="w-4 h-4 accent-emerald-700">Trabajador activo (disponible para asignar labores)</label>
+          <div class="col-span-2"><label class="label">Notas</label><textarea v-model="f.notas" rows="2" class="input" placeholder="Certificaciones, licencias, observaciones…"></textarea></div>
+        </div>
+        <template #footer>
+          <button class="btn btn-outline" @click="close">Cancelar</button>
+          <button class="btn btn-primary" @click="save"><i class="fa-solid fa-check"></i>Guardar</button>
+        </template>
+      </ap-modal>`
+  };
+
+  /* ------------------------------ Proveedor ------------------------------ */
+  const FormProveedor = {
+    props: { data: Object },
+    setup(props) {
+      const editing = !!props.data.id;
+      const f = reactive(Object.assign({ nombre: '', identificacion: '', contacto: '', telefono: '', email: '', diasCredito: 30, notas: '' }, props.data));
+      const err = ref('');
+      const save = () => {
+        if (!String(f.nombre).trim()) { err.value = 'Ingrese la razón social'; return; }
+        S.saveProveedor(Object.assign({}, f));
+        S.closeForm();
+      };
+      return { f, err, editing, save, close: S.closeForm };
+    },
+    template: `
+      <ap-modal :title="editing ? 'Editar proveedor' : 'Nuevo proveedor'" subtitle="Maestro de proveedores de insumos y servicios" icon="fa-truck" @close="close">
+        <div class="grid grid-cols-2 gap-x-3 gap-y-4">
+          <div class="col-span-2"><label class="label">Razón social *</label><input v-model="f.nombre" class="input" placeholder="Ej. Agroservicios del Norte S.A.">
+            <p v-if="err" class="hint !text-red-500">{{ err }}</p></div>
+          <div><label class="label">Cédula jurídica</label><input v-model="f.identificacion" class="input" placeholder="3-101-000000"></div>
+          <div><label class="label">Días de crédito</label><input v-model="f.diasCredito" type="number" min="0" class="input"></div>
+          <div class="col-span-2"><label class="label">Persona de contacto</label><input v-model="f.contacto" class="input"></div>
+          <div><label class="label">Teléfono</label><input v-model="f.telefono" class="input"></div>
+          <div><label class="label">Correo electrónico</label><input v-model="f.email" type="email" class="input"></div>
+          <div class="col-span-2"><label class="label">Notas</label><textarea v-model="f.notas" rows="2" class="input"></textarea></div>
+        </div>
+        <template #footer>
+          <button class="btn btn-outline" @click="close">Cancelar</button>
+          <button class="btn btn-primary" @click="save"><i class="fa-solid fa-check"></i>Guardar</button>
+        </template>
+      </ap-modal>`
+  };
+
+  /* ------------------------------ Cliente ------------------------------ */
+  const FormCliente = {
+    props: { data: Object },
+    setup(props) {
+      const editing = !!props.data.id;
+      const f = reactive(Object.assign({ nombre: '', identificacion: '', tipo: 'Exportadora', contacto: '', telefono: '', email: '', diasCredito: 30, notas: '' }, props.data));
+      const err = ref('');
+      const save = () => {
+        if (!String(f.nombre).trim()) { err.value = 'Ingrese el nombre del cliente'; return; }
+        S.saveCliente(Object.assign({}, f));
+        S.closeForm();
+      };
+      return { f, err, editing, save, C, close: S.closeForm };
+    },
+    template: `
+      <ap-modal :title="editing ? 'Editar cliente' : 'Nuevo cliente'" subtitle="Compradores de fruta y condiciones de crédito" icon="fa-handshake" @close="close">
+        <div class="grid grid-cols-2 gap-x-3 gap-y-4">
+          <div class="col-span-2"><label class="label">Nombre / razón social *</label><input v-model="f.nombre" class="input" placeholder="Ej. Exportadora del Caribe S.A.">
+            <p v-if="err" class="hint !text-red-500">{{ err }}</p></div>
+          <div><label class="label">Tipo de cliente</label><select v-model="f.tipo" class="input"><option v-for="t in C.TIPOS_CLIENTE" :key="t">{{ t }}</option></select></div>
+          <div><label class="label">Identificación</label><input v-model="f.identificacion" class="input"></div>
+          <div><label class="label">Días de crédito</label><input v-model="f.diasCredito" type="number" min="0" class="input"></div>
+          <div><label class="label">Persona de contacto</label><input v-model="f.contacto" class="input"></div>
+          <div><label class="label">Teléfono</label><input v-model="f.telefono" class="input"></div>
+          <div><label class="label">Correo electrónico</label><input v-model="f.email" type="email" class="input"></div>
+          <div class="col-span-2"><label class="label">Notas</label><textarea v-model="f.notas" rows="2" class="input" placeholder="Requisitos de calidad, calibres, certificaciones exigidas…"></textarea></div>
+        </div>
+        <template #footer>
+          <button class="btn btn-outline" @click="close">Cancelar</button>
+          <button class="btn btn-primary" @click="save"><i class="fa-solid fa-check"></i>Guardar</button>
+        </template>
+      </ap-modal>`
+  };
+
+  /* ------------------------------ Orden de compra ------------------------------ */
+  const FormOrden = {
+    props: { data: Object },
+    setup(props) {
+      const editing = !!props.data.id;
+      const bloqueada = editing && (props.data.estado === 'recibida' || props.data.estado === 'cancelada');
+      const f = reactive(Object.assign({ proveedorId: '', fecha: S.state.hoy, fechaEntrega: U.addDays(S.state.hoy, 7), estado: 'borrador', lineas: [], notas: '' }, props.data));
+      f.lineas = (f.lineas || []).map((l) => Object.assign({}, l));
+      if (!f.lineas.length) f.lineas.push({ insumoId: '', cantidad: '', costoUnitario: '' });
+      const errors = reactive({});
+      const insumos = computed(() => S.state.insumos.slice().sort((a, b) => a.nombre.localeCompare(b.nombre)));
+      const proveedores = computed(() => S.state.proveedores.slice().sort((a, b) => a.nombre.localeCompare(b.nombre)));
+      const sugeridos = computed(() => S.stockBajo.value.filter((i) => !f.lineas.some((l) => l.insumoId === i.id)));
+      const ins = (id) => S.insumo(id);
+      const onInsumo = (l) => { const i = ins(l.insumoId); if (i && (l.costoUnitario === '' || l.costoUnitario == null)) l.costoUnitario = i.costoUnitario; };
+      const agregarSugeridos = () => {
+        f.lineas = f.lineas.filter((l) => l.insumoId);
+        sugeridos.value.forEach((i) => f.lineas.push({ insumoId: i.id, cantidad: U.round(Math.max(i.stockMinimo * 2 - i.stock, i.stockMinimo || 1), 2), costoUnitario: i.costoUnitario }));
+      };
+      const total = computed(() => AP.negocio.totalOrden({ lineas: f.lineas }));
+      const guardar = (aprobar) => {
+        Object.keys(errors).forEach((k) => delete errors[k]);
+        if (!f.proveedorId) errors.proveedor = 'Seleccione el proveedor';
+        if (!f.lineas.some((l) => l.insumoId && Number(l.cantidad) > 0)) errors.lineas = 'Agregue al menos una línea con cantidad';
+        if (Object.keys(errors).length) return;
+        const o = S.saveOrden(Object.assign({}, f));
+        if (aprobar && o && o.estado === 'borrador') S.aprobarOrden(o.id);
+        S.closeForm();
+      };
+      return { f, errors, editing, bloqueada, insumos, proveedores, sugeridos, ins, onInsumo, agregarSugeridos, total, guardar, B: AP.negocio, U, S, money: AP.money, close: S.closeForm };
+    },
+    template: `
+      <ap-modal :title="editing ? 'Orden ' + f.numero : 'Nueva orden de compra'" :subtitle="editing ? B.ESTADOS_OC[f.estado].label : 'Solicitud de insumos a proveedor'" icon="fa-file-invoice" size="lg" @close="close">
+        <div class="space-y-5">
+          <div v-if="bloqueada" class="strip st-neutral"><i class="fa-solid fa-lock mt-0.5"></i><span>Esta orden está {{ B.ESTADOS_OC[f.estado].label.toLowerCase() }} y no se puede modificar.</span></div>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="col-span-2 sm:col-span-1">
+              <label class="label">Proveedor *</label>
+              <select v-model="f.proveedorId" class="input" :disabled="bloqueada"><option value="">Seleccionar…</option><option v-for="p in proveedores" :key="p.id" :value="p.id">{{ p.nombre }}</option></select>
+              <p v-if="errors.proveedor" class="hint !text-red-500">{{ errors.proveedor }}</p>
+              <p v-if="!proveedores.length" class="hint">Primero registre proveedores en <a href="#/compras?tab=proveedores" class="font-semibold text-brand-700" @click="close">Compras</a>.</p>
+            </div>
+            <div><label class="label">Fecha de la orden</label><input v-model="f.fecha" type="date" class="input" :disabled="bloqueada"></div>
+            <div><label class="label">Entrega prevista</label><input v-model="f.fechaEntrega" type="date" class="input" :disabled="bloqueada"></div>
+          </div>
+          <div class="rounded-xl border border-ink-200 dark:border-white/[0.08] overflow-hidden">
+            <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 bg-ink-50 dark:bg-white/[0.03]">
+              <p class="text-[13px] font-semibold"><i class="fa-solid fa-boxes-stacked text-brand-700 mr-1.5"></i>Líneas de la orden</p>
+              <div v-if="!bloqueada" class="flex gap-1.5">
+                <button v-if="sugeridos.length" type="button" class="btn btn-outline btn-sm" @click="agregarSugeridos"><i class="fa-solid fa-wand-magic-sparkles text-amber-500"></i>Reponer stock bajo ({{ sugeridos.length }})</button>
+                <button type="button" class="btn btn-soft btn-sm" @click="f.lineas.push({ insumoId: '', cantidad: '', costoUnitario: '' })"><i class="fa-solid fa-plus"></i>Línea</button>
+              </div>
+            </div>
+            <div v-for="(l, i) in f.lineas" :key="i" class="px-4 py-2.5 border-t border-ink-100 dark:border-white/5 grid grid-cols-12 gap-2 items-end">
+              <div class="col-span-12 sm:col-span-5"><label class="label">Insumo</label>
+                <select v-model="l.insumoId" class="input" @change="onInsumo(l)" :disabled="bloqueada"><option value="">Seleccionar…</option><option v-for="x in insumos" :key="x.id" :value="x.id">{{ x.nombre }} ({{ x.unidad }})</option></select></div>
+              <div class="col-span-4 sm:col-span-2"><label class="label">Cantidad</label><input v-model="l.cantidad" type="number" step="any" min="0" class="input" :disabled="bloqueada"></div>
+              <div class="col-span-4 sm:col-span-2"><label class="label">Costo unit.</label><input v-model="l.costoUnitario" type="number" step="any" min="0" class="input" :disabled="bloqueada"></div>
+              <div class="col-span-3 sm:col-span-2 text-right"><label class="label">Subtotal</label><p class="h-9 grid items-center num font-semibold text-[13px]">{{ money((Number(l.cantidad) || 0) * (Number(l.costoUnitario) || 0)) }}</p></div>
+              <div class="col-span-1 flex justify-end"><button v-if="!bloqueada" type="button" class="btn-icon btn-icon-sm text-red-500" @click="f.lineas.splice(i, 1)" aria-label="Quitar"><i class="fa-solid fa-xmark"></i></button></div>
+              <p v-if="ins(l.insumoId)" class="col-span-12 text-[11px] muted">Stock actual {{ U.fmtNum(ins(l.insumoId).stock, 2) }} {{ ins(l.insumoId).unidad }} · costo promedio {{ money(ins(l.insumoId).costoUnitario) }}</p>
+            </div>
+            <p v-if="errors.lineas" class="px-4 pb-3 text-[12px] text-red-500">{{ errors.lineas }}</p>
+          </div>
+          <div><label class="label">Notas / condiciones</label><textarea v-model="f.notas" rows="2" class="input" :disabled="bloqueada" placeholder="Condiciones de entrega, forma de pago…"></textarea></div>
+        </div>
+        <template #footer>
+          <div class="mr-auto text-sm"><span class="muted">Total</span> <b class="num text-base text-ink-950 dark:text-white">{{ money(total) }}</b></div>
+          <button class="btn btn-outline" @click="close">{{ bloqueada ? 'Cerrar' : 'Cancelar' }}</button>
+          <template v-if="!bloqueada">
+            <button class="btn btn-outline" @click="guardar(false)"><i class="fa-regular fa-floppy-disk"></i>Guardar borrador</button>
+            <button v-if="f.estado === 'borrador'" class="btn btn-primary" @click="guardar(true)"><i class="fa-solid fa-check"></i>Guardar y aprobar</button>
+            <button v-else class="btn btn-primary" @click="guardar(false)"><i class="fa-solid fa-check"></i>Guardar</button>
+          </template>
+        </template>
+      </ap-modal>`
+  };
+
+  const FormHost = {
+    setup() { return { ui: S.state.ui }; },
+    template: `<component v-if="ui.form" :is="'form-' + ui.form.type" :key="ui.form.key" :data="ui.form.data"></component>`
+  };
+
+  AP.forms = { FormParcela, FormLabor, FormCosecha, FormMonitoreo, FormInsumo, FormMovimiento, FormFinca, FormTrabajador, FormProveedor, FormCliente, FormOrden, FormHost };
+})(window.AP = window.AP || {});

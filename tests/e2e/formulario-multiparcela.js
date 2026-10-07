@@ -1,0 +1,24 @@
+const { chromium } = require('playwright');
+(async () => {
+  const b = await chromium.launch(); const page = await b.newPage({ viewport:{width:390,height:844} });
+  const errs=[]; page.on('pageerror', e => errs.push(e.message));
+  await page.route('**/api.open-meteo.com/**', r => r.abort());
+  await page.goto('http://localhost:8765/index.html#/labores'); await page.evaluate(()=>{localStorage.clear()}); await page.reload();
+  await page.waitForTimeout(400);
+  await page.evaluate(()=>AP.store.loadDemo()); await page.waitForTimeout(300);
+  await page.locator('button[aria-label="Crear"]:visible').click(); await page.waitForTimeout(300);
+  await page.locator('[role=dialog] button:has-text("Orden de trabajo")').first().click(); await page.waitForTimeout(400);
+  const n0 = await page.evaluate(()=>AP.store.state.labores.length);
+  await page.locator('[role=dialog] button.filter-chip:has-text("El Guayabo")').click();
+  await page.locator('[role=dialog] button.filter-chip:has-text("San Rafael")').click();
+  await page.locator('[role=dialog] button:has-text("Agregar")').click();
+  await page.locator('[role=dialog] select').nth(1).selectOption('i2');
+  await page.locator('[role=dialog] input[placeholder="0"]').first().fill('100');
+  await page.locator('[role=dialog] input[placeholder="0"]').nth(3).fill('500');
+  await page.screenshot({ path: process.argv[2]+'/shots/ui-labor-multi.png' });
+  await page.locator('[role=dialog] button:has-text("Registrar labor")').last().click(); await page.waitForTimeout(300);
+  const res = await page.evaluate(n0 => { const ls = AP.store.state.labores.slice(n0); return ls.map(l => [l.parcelaId, l.insumos[0] && l.insumos[0].cantidad, l.costoManoObra, l.costoTotal]); }, n0);
+  console.log('MULTI', JSON.stringify(res), 'esperado cantidades 480/700 (4.8 ha y 7 ha × 100 kg/ha) y MO 203/297');
+  console.log('ERRORES', errs.length ? errs : 'ninguno');
+  await b.close();
+})();
