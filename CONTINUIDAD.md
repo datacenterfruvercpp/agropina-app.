@@ -14,11 +14,11 @@ Después pidió **«mejorar totalmente el diseño y la funcionalidad, upgrade fu
 
 | Aspecto | Estado |
 |---|---|
-| Código | v3.0.0 completa y empujada a `claude/zen-goldberg-xdoq26` (`main` aún tiene la v1) |
+| Código | v3.0.0 completa y **fusionada en `main`** el 2026-10-07 (commit `1c2edae`) |
 | Pruebas unitarias | 18/18 en verde (`npm test`: 9 agronómicas + 9 de lógica ERP) |
 | Pruebas de navegador | `reglas-v3.js` 36/36; `reglas-negocio.js` y `formulario-multiparcela.js` OK; `capturas.js`: 27 vistas y 11 formularios en escritorio, móvil y oscuro sin errores JS; sin desbordes a 390/768/1 024 px |
-| Pull request | https://github.com/datacenterfruvercpp/agropina-app./pull/1 (`claude/zen-goldberg-xdoq26` → `main`), sin fusionar; se actualiza solo con cada push |
-| Publicación propia (GitHub Pages) | **Pendiente**; el usuario aún no la activó |
+| Pull request | https://github.com/datacenterfruvercpp/agropina-app./pull/1 (`claude/zen-goldberg-xdoq26` → `main`), **fusionado** el 2026-10-07 |
+| Publicación | **Vercel** (proyecto `agropina-app`, conectado al repositorio): publica `main` en producción y cada rama como vista previa. Se sirve la raíz tal cual, sin script `build` |
 | Vista previa en claude.ai | Publicada (privada) con la v3: https://claude.ai/artifact/TA9Xs68tdJ9z1SVfVEHE8n |
 | Clima real, mapa satelital, GPS, instalación PWA, modo sin conexión | **No verificados** en un dispositivo real (el entorno cloud bloquea esos servicios) |
 

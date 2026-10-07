@@ -7,7 +7,8 @@ Dónde quedó el trabajo y qué hacer a continuación. Léelo primero al retomar
 ## Dónde quedó todo
 
 - La **v3.0 «Enterprise»** está terminada, probada y en la rama de trabajo: rediseño tipo SAP/Oracle/Dynamics y módulos ERP (multi-finca, órdenes de trabajo con personal, planilla, compras, kardex, ventas y cuentas por cobrar, presupuesto vs real, reportes, auditoría, paleta de comandos). Detalle en `CHANGELOG.md`.
-- El pull request https://github.com/datacenterfruvercpp/agropina-app./pull/1 (rama de trabajo → `main`) se actualizó solo con el push; sigue sin fusionar. `main` todavía tiene la v1.
+- El pull request https://github.com/datacenterfruvercpp/agropina-app./pull/1 se **fusionó en `main`** el 2026-10-07: `main` ya tiene la v3. Vercel publica `main` en producción (el despliegue fallaba por el script `build`; corregido).
+- Para trabajo nuevo: partir de `main` actualizado; un PR fusionado no se reutiliza.
 - Vista previa privada en claude.ai, ya con la v3: https://claude.ai/artifact/TA9Xs68tdJ9z1SVfVEHE8n (sin Excel, clima simulado, sin teselas del mapa).
 - **No hay trabajo a medias ni cambios sin commitear.**
 - La rama `claude/zen-goldberg-xdoq26` creada por error en `datacenterfruvercpp/facto-cr` ya fue borrada (2026-10-07).
@@ -16,9 +17,9 @@ Dónde quedó el trabajo y qué hacer a continuación. Léelo primero al retomar
 
 1. **Recoger la opinión del usuario sobre la v3** (vista previa). Preguntar qué módulos usará de verdad y qué falta para su operación.
 2. **Validar las reglas ERP con el usuario:** tarifas por jornal y si la planilla debe incluir cargas sociales (CCSS, aguinaldo); días de crédito de sus clientes; si necesita abonos parciales; presupuesto estándar por hectárea (por defecto 4 200 MO + 5 600 insumos + 2 400 otros por ciclo).
-3. **Publicar la app real** (GitHub Pages: Settings → Pages → Deploy from a branch → `claude/zen-goldberg-xdoq26` → `/ (root)`; en repositorios privados requiere plan de pago; alternativa: Netlify Drop). Solo así funcionan el clima real, el mapa satelital, el GPS, la instalación como app y el modo sin conexión.
+3. **Probar la app publicada en Vercel** (dominio de producción del proyecto `agropina-app` en el panel de Vercel). Ahí sí funcionan el clima real, el mapa satelital, el GPS, la instalación como app y el modo sin conexión.
 4. **Verificar en un móvil real** (lista abajo).
-5. **Fusionar el PR** cuando el usuario lo apruebe y apuntar Pages a `main`.
+5. ~~Fusionar el PR~~ (hecho el 2026-10-07).
 6. Backlog (`CONTINUIDAD.md`, sección 9). Candidatos de mayor valor ahora que es un ERP: inicio de sesión y roles con sincronización en la nube, cargas sociales en la planilla, abonos parciales y facturación electrónica (enlazar con `facto-cr`).
 
 ## Lista de verificación pendiente en dispositivo real
@@ -54,7 +55,7 @@ Para republicar la vista previa: `python3 scripts/build-preview.py <carpeta>` y 
 3. ¿La planilla debe calcular cargas sociales y aguinaldo, o basta con jornales brutos?
 4. ¿Cobra por abonos o siempre el total de la factura? ¿Quiere enlazar las ventas con la facturación electrónica de `facto-cr`?
 5. ¿Los parámetros agronómicos de la MD-2 y el presupuesto por hectárea coinciden con su finca?
-6. ¿Dónde se publicará la app y se fusiona el PR para dejar la v3 como oficial?
+6. ¿Cuál es la dirección de Vercel que usa la finca? ¿Quiere un dominio propio?
 
 ## Riesgos y recordatorios
 
