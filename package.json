@@ -7,7 +7,7 @@
     "vendor": "node scripts/vendor.mjs",
     "build:css": "tailwindcss -c tailwind.config.js -i src/tailwind.css -o css/tailwind.css --minify",
     "watch:css": "tailwindcss -c tailwind.config.js -i src/tailwind.css -o css/tailwind.css --watch",
-    "build": "npm run vendor && npm run build:css",
+    "build:todo": "npm run vendor && npm run build:css",
     "test": "node --test tests/*.test.js",
     "serve": "npx --yes http-server -p 8080 -c-1 ."
   },

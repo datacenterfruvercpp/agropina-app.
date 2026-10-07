@@ -12,7 +12,7 @@ Pila: Vue 3 (build global, sin SFC ni bundler), Tailwind compilado, Chart.js, Le
 
 ```bash
 npm install            # solo para desarrollo; no es necesario para usar la app
-npm run build          # vendor (copia librerías desde node_modules) + compila Tailwind
+npm run build:todo          # vendor (copia librerías desde node_modules) + compila Tailwind
 npm run build:css      # recompila css/tailwind.css (hacer SIEMPRE tras cambiar clases)
 npm test               # pruebas unitarias: motor agronómico + lógica ERP (node --test tests/*.test.js)
 npm run serve          # servidor local en http://localhost:8080
@@ -88,6 +88,7 @@ Las vistas reciben `props.query` (parámetros tras `?` en el hash, p. ej. `#/fin
 - `python3 -m http.server` no envía `charset` en los `.js`: una página sin `<meta charset="utf-8">` mostrará caracteres rotos y errores de regex. `index.html` lo declara; la copia de vista previa no (el publicador lo añade), así que para probarla localmente agrega la meta.
 - `pkill -f "<patrón>"` puede matar tu propio shell si el patrón aparece en el comando que lo ejecuta (código de salida 144).
 - `vendor/xlsx.full.min.js` contiene un byte ESC: la herramienta Artifact lo rechaza al publicar. Por eso la vista previa va sin Excel.
+- **Vercel** está conectado al repositorio y publica cada push. La app se sirve tal cual desde la raíz (sin paso de compilación): **no** agregues un script `build` en `package.json`, porque Vercel lo ejecutaría y esperaría una carpeta `public` (el despliegue falla). Por eso el script completo se llama `build:todo`.
 - La app arranca en `DOMContentLoaded`: cualquier script que use `AP.store.state` desde `index.html` debe esperar a ese evento (ver la carga de la demo en `scripts/build-preview.py`).
 - El build de producción de Vue **no** avisa de componentes o props inexistentes: revisa las capturas, no solo la consola.
 - Vista previa en claude.ai (Artifact): el visor bloquea `fetch` externo, imágenes/teselas externas, service workers, descargas y `alert/confirm`. Sirve para mostrar el diseño, no para validar clima real ni mapa satelital. Se publica con `scripts/build-preview.py`.

@@ -44,6 +44,7 @@ Pedido del usuario: «mejora totalmente el diseño y la funcionalidad, hazle upg
 - Lógica pura nueva en `js/negocio.js` (planilla, períodos, cuentas por cobrar, presupuesto, OC, kardex, consolidado).
 
 ### Corregido
+- **Vercel:** el despliegue fallaba porque el script `build` de `package.json` hacía que Vercel esperara una carpeta `public`. El script pasó a llamarse `build:todo` y Vercel publica la raíz tal cual (los archivos compilados ya están en el repositorio).
 - La vista previa abría sin la finca de demostración (el script se ejecutaba antes del arranque de la app).
 - Desbordes horizontales en móvil (ficha de parcela) y a 1 024 px (Ventas).
 - Totales enteros de las tablas se mostraban con decimales (`10,00`).

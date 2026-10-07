@@ -45,7 +45,7 @@ El usuario todavía no ha revisado la v3. Su opinión es lo siguiente que hay qu
 ## 4. Decisiones de diseño y por qué
 
 - **Sin bundler ni CDN.** Vue como build global + scripts ordenados bajo `window.AP`. Razón: que el repositorio se publique tal cual en GitHub Pages sin paso de compilación, y que funcione sin conexión en el campo. Coste: sin tipos ni módulos ES; se compensa con una estructura estricta.
-- **Librerías y CSS commiteados** (`vendor/`, `css/tailwind.css`): mismo motivo. Se regeneran con `npm run build`.
+- **Librerías y CSS commiteados** (`vendor/`, `css/tailwind.css`): mismo motivo. Se regeneran con `npm run build:todo`.
 - **Tailwind con clases literales.** Una `safelist` por patrón generaba 6,3 MB; se reemplazó por la tabla `TONES` en `js/catalog.js`.
 - **`localStorage` como única persistencia.** Cero costo y cero cuentas. Límites: ~5 MB, un solo dispositivo, sin colaboración. Mitigación: respaldo JSON y Excel. La sincronización en la nube queda en el backlog.
 - **Estado reactivo propio** (`reactive` de Vue) en `store.js`, sin Pinia/Vuex, para no sumar dependencias.

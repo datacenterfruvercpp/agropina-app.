@@ -56,7 +56,7 @@ No hace falta compilar para usarla: basta con publicar la carpeta (por ejemplo, 
 
 ```bash
 npm install
-npm run build      # copia las librerías a vendor/ y compila Tailwind
+npm run build:todo      # copia las librerías a vendor/ y compila Tailwind
 npm run watch:css  # recompila los estilos mientras se edita
 npm test           # pruebas unitarias (motor agronómico y lógica ERP)
 npm run serve      # http://localhost:8080
